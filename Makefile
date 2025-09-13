@@ -1,5 +1,5 @@
-client:
-	gcc -Iinclude src/client/ws-client.c -o bin/client
+client_db:
+	gcc -Iinclude -g src/client/ws-client.c -o bin/client
 
-server:
-	gcc -Iinclude src/server/ws-server.c -o bin/server
+server_db:
+	gcc -Iinclude -g src/server/ws-server.c -o bin/server
