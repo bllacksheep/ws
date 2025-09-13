@@ -14,6 +14,13 @@ validate_addr(char *ip) {
 }
 
 int
+format_addr(char *ip) {
+    // to be implemented
+    validate_addr(ip);
+    return 0;
+}
+
+int
 main(int argc, char *argv[]) {
 
     unsigned int sfd;
