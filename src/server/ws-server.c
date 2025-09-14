@@ -31,9 +31,8 @@ check_path(char *path) {
 
 req_t *
 req_reader(char *req) {
-    // if path == dial
-    printf("full request");
-    printf(req);
+    // if path == dial:w
+    printf("full request: %s", req);
     return 0;
 }
 
