@@ -1,22 +1,59 @@
 #include <stdio.h>
+#include <unistd.h>
 #include <errno.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <netinet/ip.h>
 
-#define LISTEN_BACKLOG 1
+#define LISTEN_BACKLOG 5
+#define MAX_REQ_SIZE 200
 #define PORT 443
 
-int
-validate_addr(char *ip) {
+typedef struct {
+  char *host;
+  char *upgrade;
+  char *connection;
+  char *seckey;
+  char *secver; 
+} headers_t;
+
+typedef struct {
+    char *method;
+    char *path;
+    headers_t *headers;
+} req_t;
+
+char *
+check_path(char *path) {
     // to be implemented
     return 0;
 }
 
-int
-format_addr(char *ip) {
-    // to be implemented
-    validate_addr(ip);
+req_t *
+req_reader(char *req) {
+    // if path == dial
+    printf("full request");
+    printf(req);
+    return 0;
+}
+
+
+char *
+handle_req(char *req) {
+
+    if (req == NULL) {
+        return NULL;
+    }
+    
+    req_t *r = req_reader(req);
+    
+    if (r != NULL) {
+        if (check_path(r->path)) {
+            // other validations
+            return "upgrade true";
+         }
+    }
+
     return 0;
 }
 
@@ -47,6 +84,15 @@ main(int argc, char *argv[]) {
     }
 
     sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    int opt = 1;
+    setsockopt(
+        sfd,
+        SOL_SOCKET,
+        SO_REUSEADDR,
+        &opt,
+        sizeof(opt)
+    );
+
     if (sfd == -1) {
         fprintf(stderr, "socket error: %s\n", strerror(errno));
         return 1;
@@ -70,17 +116,31 @@ main(int argc, char *argv[]) {
 
 
     memset(&client, 0, sizeof(client));
-    
     socklen_t cl = sizeof(client);
+    char req[MAX_REQ_SIZE + 1];
+
     printf("Listening on 127.0.0.1:%d\n", PORT);
     while (1) {
+        // deque backlog as client socket 
         int cfd = accept(sfd, (struct sockaddr *)&client, &cl);
-        if (cfd == -1) {
+
+        if (cfd >= 0) {
+            fprintf(stdout, "connect accept fd: %d\n", cfd);
+            ssize_t n = read(cfd, req, MAX_REQ_SIZE);
+
+            if (n < MAX_REQ_SIZE) {
+                req[n] = '\n';
+            }
+            
+            handle_req(req);
+
+            write(1, req, MAX_REQ_SIZE);
+        } else {
             fprintf(stderr, "accept error: %s\n", strerror(errno));
             return 1;
-        } else {
-            fprintf(stdout, "connect accept on: %d\n", 123);
         }
+
+        close(cfd);
     }
 
 
