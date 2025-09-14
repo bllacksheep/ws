@@ -4,8 +4,9 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <netinet/ip.h>
+// clean these up check bin size
 
-#define LISTEN_BACKLOG 5
+#define LISTEN_BACKLOG 20
 #define MAX_REQ_SIZE 200
 #define PORT 443
 
@@ -25,13 +26,15 @@ typedef struct {
 
 char *
 check_path(char *path) {
+    char *s, *p;
+    p = "/dial";
     // to be implemented
     return 0;
 }
 
 req_t *
 req_reader(char *req) {
-    // if path == dial:w
+    // if path == dial
     printf("full request: %s", req);
     return 0;
 }
@@ -39,7 +42,6 @@ req_reader(char *req) {
 
 char *
 handle_req(char *req) {
-
     if (req == NULL) {
         return NULL;
     }
@@ -112,36 +114,36 @@ main(int argc, char *argv[]) {
         fprintf(stderr, "listen error: %s\n", strerror(errno));
         return 1;
     }
-
+    printf("Listening on 127.0.0.1:%d\n", PORT);
 
     memset(&client, 0, sizeof(client));
     socklen_t cl = sizeof(client);
     char req[MAX_REQ_SIZE + 1];
 
-    printf("Listening on 127.0.0.1:%d\n", PORT);
-    while (1) {
-        // deque backlog as client socket 
-        int cfd = accept(sfd, (struct sockaddr *)&client, &cl);
-
-        if (cfd >= 0) {
-            fprintf(stdout, "connect accept fd: %d\n", cfd);
-            ssize_t n = read(cfd, req, MAX_REQ_SIZE);
-
-            if (n < MAX_REQ_SIZE) {
-                req[n] = '\n';
-            }
-            
-            handle_req(req);
-
-            write(1, req, MAX_REQ_SIZE);
-        } else {
-            fprintf(stderr, "accept error: %s\n", strerror(errno));
-            return 1;
-        }
-
-        close(cfd);
+    // deque backlog as client socket
+    int cfd = accept(sfd, (struct sockaddr *)&client, &cl);
+    if (cfd >= 0) {
+        fprintf(stdout, "connect accept fd: %d\n", cfd);
+    } else {
+        fprintf(stderr, "accept error: %s\n", strerror(errno));
+        return 1;
     }
 
+    while (1) {
+        ssize_t n = read(cfd, req, MAX_REQ_SIZE);
+
+        if (n == -1) {
+            fprintf(stderr, "read error: fd: %d\n", cfd);
+         }
+
+        // if (n < MAX_REQ_SIZE) {
+        //     req[n] = '\n';
+        // }
+        handle_req(req);
+
+        write(1, req, n);
+        //close(cfd);
+    }
 
     return 0;
 }
