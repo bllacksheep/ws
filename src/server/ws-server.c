@@ -36,6 +36,7 @@ parse_raw_bytes(char *req) {
             hdp++; // advance to start headers
             break;
        }
+       terminus++; // no need to start from begining
     }
 
     raw.request_headers = hdp;
