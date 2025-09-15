@@ -4,39 +4,75 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <netinet/ip.h>
+#include "ws-server.h"
 // clean these up check bin size
 
-#define LISTEN_BACKLOG 20
-#define MAX_REQ_SIZE 200
-#define PORT 443
-
-typedef struct {
-  char *host;
-  char *upgrade;
-  char *connection;
-  char *seckey;
-  char *secver; 
-} headers_t;
-
-typedef struct {
-    char *method;
-    char *path;
-    headers_t *headers;
-} req_t;
 
 char *
-check_path(char *path) {
+check_path(char *uri) {
     char *s, *p;
     p = "/dial";
     // to be implemented
     return 0;
 }
 
-req_t *
+raw_req_t
+parse_raw_bytes(char *req) {
+    // \n denotes requset line end
+    // \r\n denotes header end
+    // header end to end denotes end
+    char *hdp = req;
+    char *terminus = req;
+
+    raw_req_t raw;
+    raw.request_line = req;
+
+    // set request line ; each line terminated with \r\n
+    while (hdp[0] != '\r') {
+       hdp++;
+       if (*hdp == '\r') {
+            *hdp = '\0';
+            hdp++; // advance to \n
+            hdp++; // advance to start headers
+            break;
+       }
+    }
+
+    raw.request_headers = hdp;
+
+    while (!(terminus[0] == '\r' &&
+           terminus[1] == '\n' &&
+           terminus[2] == '\r' &&
+           terminus[3] == '\n')) {
+       terminus++;
+    }
+
+    *terminus = '\0';
+    // advance to start of body
+    terminus += 3;
+    
+    raw.request_body = terminus;
+
+    printf("%s\n", raw.request_line);
+    printf("%s\n", raw.request_headers);
+    printf("%s\n", raw.request_body);
+
+    return raw;
+
+}
+
+req_t
+parse_raw_request(raw_req_t *req) {
+    req_t r;
+    return r;
+}
+
+req_t
 req_reader(char *req) {
-    // if path == dial
-    printf("full request: %s", req);
-    return 0;
+    raw_req_t raw_req = parse_raw_bytes(req);
+    req_t r = parse_raw_request(&raw_req);
+    //printf("%s", req);
+    return r; 
 }
 
 
@@ -45,18 +81,19 @@ handle_req(char *req) {
     if (req == NULL) {
         return NULL;
     }
-    
-    req_t *r = req_reader(req);
-    
-    if (r != NULL) {
-        if (check_path(r->path)) {
-            // other validations
-            return "upgrade true";
-         }
-    }
+
+    req_t r = req_reader(req);
+
+    // if (r != NULL) {
+    //     if (check_path(r->uri)) {
+    //         // other validations
+    //         return "upgrade true";
+    //      }
+    // }
 
     return 0;
 }
+
 
 int
 main(int argc, char *argv[]) {
@@ -66,20 +103,6 @@ main(int argc, char *argv[]) {
     struct sockaddr_in client;
     struct in_addr ip;
 
-    // if (argc == 2) {
-    //     if (validate_addr(argv[1]) == -1) {
-    //         fprintf(stderr, "invalid ip: %s\n", argv[1]);
-    //     };
-    //     // what type / format is INADDR_LOOPBACK?
-    //     ip.s_addr = argv[1];
-    // } else if (argc > 2) {
-    //     fprintf(stderr, "too many arguments\n");
-    //     return 1;
-    // } else {
-    //     ip.s_addr = htonl(INADDR_LOOPBACK);
-    // }
-    //
-    
     if (argc < 2) {
         ip.s_addr = htonl(INADDR_LOOPBACK);
     }
@@ -131,17 +154,12 @@ main(int argc, char *argv[]) {
 
     while (1) {
         ssize_t n = read(cfd, req, MAX_REQ_SIZE);
-
         if (n == -1) {
             fprintf(stderr, "read error: fd: %d\n", cfd);
          }
-
-        // if (n < MAX_REQ_SIZE) {
-        //     req[n] = '\n';
-        // }
         handle_req(req);
 
-        write(1, req, n);
+        //write(1, req, n);
         //close(cfd);
     }
 
