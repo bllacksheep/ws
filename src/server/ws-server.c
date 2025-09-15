@@ -28,16 +28,14 @@ parse_raw_bytes(char *req) {
     raw.request_line = req;
 
     // set request line ; each line terminated with \r\n
-    while (hdp[0] != '\r') {
-       hdp++;
-       if (*hdp == '\r') {
-            *hdp = '\0';
-            hdp++; // advance to \n
-            hdp++; // advance to start headers
-            break;
-       }
-       terminus++; // no need to start from begining
+    while (!(hdp[0] == '\r' &&
+           hdp[1] == '\n')) {
+        hdp++;
+        terminus++; // no need to start from beginning
     }
+
+    *hdp = '\0';
+    hdp += 2;
 
     raw.request_headers = hdp;
 
@@ -50,7 +48,7 @@ parse_raw_bytes(char *req) {
 
     *terminus = '\0';
     // advance to start of body
-    terminus += 3;
+    terminus += 4;
     
     raw.request_body = terminus;
 
@@ -71,6 +69,7 @@ parse_raw_request(raw_req_t *req) {
 req_t
 req_reader(char *req) {
     raw_req_t raw_req = parse_raw_bytes(req);
+
     req_t r = parse_raw_request(&raw_req);
     //printf("%s", req);
     return r; 
@@ -85,12 +84,6 @@ handle_req(char *req) {
 
     req_t r = req_reader(req);
 
-    // if (r != NULL) {
-    //     if (check_path(r->uri)) {
-    //         // other validations
-    //         return "upgrade true";
-    //      }
-    // }
 
     return 0;
 }
