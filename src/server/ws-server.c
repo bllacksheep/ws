@@ -5,6 +5,7 @@
 #include <sys/socket.h>
 #include <netinet/ip.h>
 #include "ws-server.h"
+#include "http.h"
 // clean these up check bin size
 
 

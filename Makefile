@@ -1,7 +1,6 @@
 client_db:
 	gcc -Iinclude -g src/client/ws-client.c -o bin/client
 
-
 server_db: bin/server
 
 bin/server: build/ws-server.o build/http.o

@@ -25,4 +25,7 @@ enum methods {
     GET,
 };
 
+char *
+handle_req(char *req);
+
 #endif

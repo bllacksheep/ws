@@ -77,7 +77,6 @@ handle_req(char *req) {
     }
 
     req_t r = req_reader(req);
-    
 
     return 0;
 }
