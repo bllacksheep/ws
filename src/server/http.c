@@ -68,7 +68,7 @@ initialize_request_line(const char *rl) {
 
     token[0] = '\0';
     token++;
-    char *request_uri = token;
+    const char *request_uri = token;
 
     for (size_t i = 0; i < sizeof(methods)/sizeof(methods[0]); i++) {
         if (strcmp(methods[i].name, req_meth_str) == 0) {
@@ -82,11 +82,13 @@ initialize_request_line(const char *rl) {
 
     token[0] = '\0';
     token++;
+    
+    const char* request_version = token;
 
     req_t r = {
         .request_method = request_method,
         .request_uri = request_uri,
-        .request_version = token,
+        .request_version = request_version,
     };
 
     return r;
