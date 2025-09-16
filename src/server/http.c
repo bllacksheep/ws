@@ -9,11 +9,10 @@ check_path(char *uri) {
     return 0;
 }
 
+// \r\n delimits request line and each header
+// \r\n\r\n\n delimtes field line section (headers)
 raw_req_t
 parse_raw_bytes(char *req) {
-    // \n denotes requset line end
-    // \r\n denotes header end
-    // header end to end denotes end
     char *hdp = req;
     char *terminus = req;
 
@@ -53,6 +52,7 @@ parse_raw_bytes(char *req) {
 
 }
 
+// rfc 9110
 req_t
 parse_raw_request(raw_req_t *req) {
 
