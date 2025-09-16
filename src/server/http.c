@@ -157,6 +157,7 @@ handle_req(const char *raw_req_buf) {
     }
 
     // validate websocket request headers etc
+    // bad request if malformed
 
     return NULL;
 }
