@@ -115,10 +115,12 @@ parse_raw_request(const raw_req_t *req) {
     }
 
     if (req->request_headers != NULL) {
+        // hash map
         printf("%s\n", req->request_headers);
     }
 
     if (req->request_body != NULL) {
+        // shouldn't be required
         printf("%s\n", req->request_body);
     }
 
@@ -126,16 +128,15 @@ parse_raw_request(const raw_req_t *req) {
 }
 
 req_t
-req_reader(const char *req) {
-    raw_req_t raw_req = parse_raw_bytes(req);
-
-    req_t r = parse_raw_request(&raw_req);
+req_reader(const char *raw_buf) {
+    raw_req_t raw_req = parse_raw_bytes(raw_buf);
+    req_t req = parse_raw_request(&raw_req);
 
     // handle request type
     // handle chunking if body not NULL?
     
     //printf("%s", req);
-    return r; 
+    return req; 
 }
 
 const char *_405_method_not_allowed =
@@ -146,14 +147,16 @@ const char *_405_method_not_allowed =
     "Method Not Allowed";
 
 const char *
-handle_req(const char *request_byte_buffer) {
+handle_req(const char *raw_req_buf) {
     if (request_byte_buffer == NULL) {
         return NULL;
     }
-    req_t req = req_reader(request_byte_buffer);
+    req_t req = req_reader(raw_req_buf);
     if (req.request_method != GET) {
         return _405_method_not_allowed;
     }
+
+    // validate websocket request headers etc
 
     return NULL;
 }
