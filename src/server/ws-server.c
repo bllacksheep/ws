@@ -57,25 +57,29 @@ main(int argc, char *argv[]) {
     socklen_t cl = sizeof(client);
     char req[MAX_REQ_SIZE + 1];
 
-    // deque backlog as client socket
-    int cfd = accept(sfd, (struct sockaddr *)&client, &cl);
-    if (cfd >= 0) {
-        fprintf(stdout, "connect accept fd: %d\n", cfd);
-    } else {
-        fprintf(stderr, "accept error: %s\n", strerror(errno));
-        return 1;
-    }
-
+    int cfd;
     while (1) {
+        // deque backlog as client socket
+        cfd = accept(sfd, (struct sockaddr *)&client, &cl);
+        if (cfd >= 0) {
+            fprintf(stdout, "connect accept fd: %d\n", cfd);
+        } else {
+            fprintf(stderr, "accept error: %s\n", strerror(errno));
+            return 1;
+        }
+
         ssize_t n = read(cfd, req, MAX_REQ_SIZE);
         if (n == -1) {
             fprintf(stderr, "read error: fd: %d\n", cfd);
          }
-        handle_req(req);
+        const char* resp = handle_req(req);
 
-        //write(1, req, n);
-        //close(cfd);
+        write(cfd, resp, strlen(resp));
+
+        close(cfd);
     }
+
+    close(sfd);
 
     return 0;
 }

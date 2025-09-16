@@ -42,7 +42,7 @@ typedef struct {
     const method_t method;
 } method_map_t;
 
-char *
+const char *
 handle_req(const char *req);
 
 #endif

@@ -107,11 +107,14 @@ parse_raw_request(const raw_req_t *req) {
     req_t r = initialize_request_line(req->request_line);
     if (r.request_method == -1) {
         fprintf(stderr, "initialize request line error\n");
+        return r;
+    }
+
+    if (r.request_method != GET) {
+        return r;
     }
 
     if (req->request_headers != NULL) {
-        if (r.request_method == POST) {}
-        if (r.request_method == GET) {}
         printf("%s\n", req->request_headers);
     }
 
@@ -135,14 +138,23 @@ req_reader(const char *req) {
     return r; 
 }
 
+const char *_405_method_not_allowed =
+    "HTTP/1.1 405 Method Not Allowed\r\n"
+    "Allow: GET\r\n"
+    "Content-Type: text/plain\r\n"
+    "Content-Length: 18\r\n\r\n"
+    "Method Not Allowed";
 
-char *
-handle_req(const char *req) {
-    if (req == NULL) {
+const char *
+handle_req(const char *request_byte_buffer) {
+    if (request_byte_buffer == NULL) {
         return NULL;
     }
-    req_t r = req_reader(req);
+    req_t req = req_reader(request_byte_buffer);
+    if (req.request_method != GET) {
+        return _405_method_not_allowed;
+    }
 
-    return 0;
+    return NULL;
 }
 
