@@ -14,7 +14,7 @@ check_path(char *uri) {
 // \r\n\r\n\n delimtes field line section (headers)
 // raw_req_t is const
 raw_req_t
-parse_raw_bytes(char *req) {
+parse_raw_bytes(const char *req) {
     char *hdp = req;
     char *terminus = req;
 
@@ -50,7 +50,8 @@ parse_raw_bytes(char *req) {
 
 }
 
-req_t initialize_request_line(const char *rl) {
+req_t
+initialize_request_line(const char *rl) {
 
     char *token = rl;
     char *req_meth_str = rl;
@@ -93,7 +94,7 @@ req_t initialize_request_line(const char *rl) {
 
 // rfc 9110
 req_t
-parse_raw_request(raw_req_t *req) {
+parse_raw_request(const raw_req_t *req) {
     // get headers into a hash table. 
     // how I maintain a hash table per request
     // how does this work with threading
@@ -120,7 +121,7 @@ parse_raw_request(raw_req_t *req) {
 }
 
 req_t
-req_reader(char *req) {
+req_reader(const char *req) {
     raw_req_t raw_req = parse_raw_bytes(req);
 
     req_t r = parse_raw_request(&raw_req);
@@ -134,7 +135,7 @@ req_reader(char *req) {
 
 
 char *
-handle_req(char *req) {
+handle_req(const char *req) {
     if (req == NULL) {
         return NULL;
     }

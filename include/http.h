@@ -43,6 +43,6 @@ typedef struct {
 } method_map_t;
 
 char *
-handle_req(char *req);
+handle_req(const char *req);
 
 #endif
