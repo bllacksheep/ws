@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include "http.h"
 
 char *
@@ -11,13 +12,11 @@ check_path(char *uri) {
 
 // \r\n delimits request line and each header
 // \r\n\r\n\n delimtes field line section (headers)
+// raw_req_t is const
 raw_req_t
 parse_raw_bytes(char *req) {
     char *hdp = req;
     char *terminus = req;
-
-    raw_req_t raw;
-    raw.request_line = req;
 
     // set request line ; each line terminated with \r\n
     while (!(hdp[0] == '\r' &&
@@ -28,8 +27,6 @@ parse_raw_bytes(char *req) {
 
     *hdp = '\0';
     hdp += 2;
-
-    raw.request_headers = hdp;
 
     while (!(terminus[0] == '\r' &&
            terminus[1] == '\n' &&
@@ -42,27 +39,76 @@ parse_raw_bytes(char *req) {
     // advance to start of body
     terminus += 4;
     
-    raw.request_body = terminus;
+    // const
+    raw_req_t raw = {
+        .request_line = req,
+        .request_headers = hdp,
+        .request_body = terminus,
+    };
 
     return raw;
 
 }
 
+req_t initialize_request_line(const char *rl) {
 
+    char *token = rl;
+    char *req_meth_str = rl;
+    method_t request_method;
+
+    static const method_map_t methods[] = {
+        {.name = "GET", .method = GET},
+        {.name = "POST", .method = POST},
+    };
+
+    while (token[0] != ' ') {
+        token++;
+    }
+
+    token[0] = '\0';
+    token++;
+    char *request_uri = token;
+
+    for (size_t i = 0; i < sizeof(methods)/sizeof(methods[0]); i++) {
+        if (strcmp(methods[i].name, req_meth_str) == 0) {
+            request_method = methods[i].method;
+        }
+    }
+
+    while (token[0] != ' ') {
+        token++;
+    }
+
+    token[0] = '\0';
+    token++;
+
+    req_t r = {
+        .request_method = request_method,
+        .request_uri = request_uri,
+        .request_version = token,
+    };
+
+    return r;
+}
 
 // rfc 9110
 req_t
 parse_raw_request(raw_req_t *req) {
-    req_t r;
     // get headers into a hash table. 
     // how I maintain a hash table per request
     // how does this work with threading
-    if (req->request_line != NULL {
-        // r.stuff = stuff
-        printf("%s\n", req->request_line);
+    if (req->request_line == NULL) {
+        fprintf(stderr, "failed to parse raw request line\n");
     }
 
-    if (req->headers != NULL) {
+    req_t r = initialize_request_line(req->request_line);
+    if (r.request_method == -1) {
+        fprintf(stderr, "initialize request line error\n");
+    }
+
+    if (req->request_headers != NULL) {
+        if (r.request_method == POST) {}
+        if (r.request_method == GET) {}
         printf("%s\n", req->request_headers);
     }
 

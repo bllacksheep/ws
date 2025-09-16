@@ -14,9 +14,9 @@ typedef struct {
 } ws_headers_t;
 
 typedef struct {
-    char *request_line;
-    char *request_headers;
-    char *request_body;
+    const char *request_line;
+    const char *request_headers;
+    const char *request_body;
 } raw_req_t;
 
 typedef struct {
@@ -24,16 +24,23 @@ typedef struct {
     const unsigned int length;
 } http_body_t;
 
+typedef enum {
+    GET,
+    POST,
+} method_t;
+
 typedef struct {
-    const int  request_method;
+    const method_t request_method;
     const char *request_uri;
+    const char *request_version;
     ws_headers_t *request_headers;
     http_body_t *request_body;
 } req_t;
 
-enum methods {
-    GET,
-};
+typedef struct {
+    const char *name;
+    const method_t method;
+} method_map_t;
 
 char *
 handle_req(char *req);
