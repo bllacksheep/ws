@@ -44,19 +44,23 @@ parse_raw_bytes(char *req) {
     
     raw.request_body = terminus;
 
-    printf("%s\n", raw.request_line);
-    printf("%s\n", raw.request_headers);
-    printf("%s\n", raw.request_body);
-
     return raw;
 
 }
 
+
+
 // rfc 9110
 req_t
 parse_raw_request(raw_req_t *req) {
-
     req_t r;
+    // get headers into a hash table. 
+    // how I maintain a hash table per request
+    // how does this work with threading
+    printf("%s\n", req->request_line);
+    printf("%s\n", req->request_headers);
+    printf("%s\n", req->request_body);
+
     return r;
 }
 
@@ -75,7 +79,6 @@ handle_req(char *req) {
     if (req == NULL) {
         return NULL;
     }
-
     req_t r = req_reader(req);
 
     return 0;

@@ -1,12 +1,16 @@
 #ifndef _HTTP_h
 #define _HTTP_h
 
+// no "update" api so const should be fine
 typedef struct {
-  char *host;
-  char *upgrade;
-  char *connection;
-  char *seckey;
-  char *secver;
+    const char *key;
+    const char *value;
+} header_item_t;
+
+typedef struct {
+  int size;
+  int count;
+  header_item_t **headers;
 } ws_headers_t;
 
 typedef struct {
@@ -16,9 +20,15 @@ typedef struct {
 } raw_req_t;
 
 typedef struct {
-    int  request_method;
-    char *request_uri;
+    char *body;
+    const unsigned int length;
+} http_body_t;
+
+typedef struct {
+    const int  request_method;
+    const char *request_uri;
     ws_headers_t *request_headers;
+    http_body_t *request_body;
 } req_t;
 
 enum methods {
