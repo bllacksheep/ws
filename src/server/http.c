@@ -57,9 +57,18 @@ parse_raw_request(raw_req_t *req) {
     // get headers into a hash table. 
     // how I maintain a hash table per request
     // how does this work with threading
-    printf("%s\n", req->request_line);
-    printf("%s\n", req->request_headers);
-    printf("%s\n", req->request_body);
+    if (req->request_line != NULL {
+        // r.stuff = stuff
+        printf("%s\n", req->request_line);
+    }
+
+    if (req->headers != NULL) {
+        printf("%s\n", req->request_headers);
+    }
+
+    if (req->request_body != NULL) {
+        printf("%s\n", req->request_body);
+    }
 
     return r;
 }
@@ -69,6 +78,10 @@ req_reader(char *req) {
     raw_req_t raw_req = parse_raw_bytes(req);
 
     req_t r = parse_raw_request(&raw_req);
+
+    // handle request type
+    // handle chunking if body not NULL?
+    
     //printf("%s", req);
     return r; 
 }
