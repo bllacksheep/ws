@@ -57,7 +57,7 @@ main(int argc, char *argv[]) {
     socklen_t cl = sizeof(client);
     char req[MAX_REQ_SIZE + 1];
 
-    int cfd;
+    unsigned int cfd;
     while (1) {
         // deque backlog as client socket
         cfd = accept(sfd, (struct sockaddr *)&client, &cl);
