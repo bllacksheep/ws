@@ -1,6 +1,9 @@
 #ifndef _HTTP_h
 #define _HTTP_h
 
+#define MAX_REQ_SIZE 1024
+#define ENDPOINT "/dial"
+
 // no "update" api so const should be fine
 typedef struct {
     const char *key;
@@ -17,6 +20,7 @@ typedef struct {
     const char *request_line;
     const char *request_headers;
     const char *request_body;
+    const unsigned int is_http;
 } raw_req_t;
 
 typedef struct {
@@ -43,6 +47,6 @@ typedef struct {
 } method_map_t;
 
 const char *
-handle_req(const char *req);
+handle_req(const char *, int);
 
 #endif

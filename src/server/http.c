@@ -2,31 +2,42 @@
 #include <string.h>
 #include "http.h"
 
-char *
-check_path(char *uri) {
-    char *s, *p;
-    p = "/dial";
-    // to be implemented
-    return 0;
+unsigned int
+check_path(const char *uri) {
+    if (strcmp(uri, ENDPOINT) == 0) {
+        return 0;
+    }    
+    return -1;
 }
 
 // \r\n delimits request line and each header
 // \r\n\r\n\n delimtes field line section (headers)
 // raw_req_t is const
 raw_req_t
-parse_raw_bytes(const char *req) {
+parse_raw_bytes(const char *req, int len) {
+
+    // if len less that bare-minimum request size exit
+
     char *hdp = req;
     char *terminus = req;
+    unsigned int end = len;
 
     // set request line ; each line terminated with \r\n
     while (!(hdp[0] == '\r' &&
-           hdp[1] == '\n')) {
+            hdp[1] == '\n')) {
         hdp++;
         terminus++; // no need to start from beginning
+        end--;
+        if (end == 0) {
+            // not delimeter found, bad request
+            return (raw_req_t){ .is_http = -1 };
+        }
     }
 
     *hdp = '\0';
     hdp += 2;
+
+    // if garbase terminated by \r\n validate 
 
     while (!(terminus[0] == '\r' &&
            terminus[1] == '\n' &&
@@ -44,6 +55,7 @@ parse_raw_bytes(const char *req) {
         .request_line = req,
         .request_headers = hdp,
         .request_body = terminus,
+        .is_http = 0,
     };
 
     return raw;
@@ -96,21 +108,25 @@ initialize_request_line(const char *rl) {
 
 // rfc 9110
 req_t
-parse_raw_request(const raw_req_t *req) {
+validate_http_request(const raw_req_t *req) {
     // get headers into a hash table. 
     // how I maintain a hash table per request
     // how does this work with threading
-    if (req->request_line == NULL) {
-        fprintf(stderr, "failed to parse raw request line\n");
-    }
 
     req_t r = initialize_request_line(req->request_line);
+
     if (r.request_method == -1) {
-        fprintf(stderr, "initialize request line error\n");
+        fprintf(stderr, "error: initialize request line unknown payload\n");
         return r;
     }
 
     if (r.request_method != GET) {
+        fprintf(stderr, "error: initialize request line not GET method\n");
+        return r;
+    }
+
+    if (check_path(r.request_uri) != 0) {
+        fprintf(stderr, "error: initialize request line not /dial uri\n");
         return r;
     }
 
@@ -128,15 +144,11 @@ parse_raw_request(const raw_req_t *req) {
 }
 
 req_t
-req_reader(const char *raw_buf) {
-    raw_req_t raw_req = parse_raw_bytes(raw_buf);
-    req_t req = parse_raw_request(&raw_req);
+parse_and_validate_http_request(const char *raw_buf, int buf_len) {
+    raw_req_t raw_req = parse_raw_bytes(raw_buf, buf_len);
+    if(raw_req.is_http == -1) return (req_t){};
 
-    // handle request type
-    // handle chunking if body not NULL?
-    
-    //printf("%s", req);
-    return req; 
+    return validate_http_request(&raw_req);
 }
 
 const char *_405_method_not_allowed =
@@ -146,12 +158,25 @@ const char *_405_method_not_allowed =
     "Content-Length: 18\r\n\r\n"
     "Method Not Allowed";
 
+const char *_400_bad_request =
+    "HTTP/1.1 400 Bad Request\r\n"
+    "Content-Type: text/plain\r\n"
+    "Content-Length: 18\r\n\r\n"
+    "that ain't it";
+
+// handler returning response string
 const char *
-handle_req(const char *raw_req_buf) {
-    if (request_byte_buffer == NULL) {
+handle_req(const char *raw_req_buf, int raw_buf_len) {
+    if (raw_req_buf == NULL || raw_buf_len >= MAX_REQ_SIZE) {
         return NULL;
     }
-    req_t req = req_reader(raw_req_buf);
+
+    req_t req = parse_and_validate_http_request(raw_req_buf, raw_buf_len);
+
+    if (req.request_method == -1) {
+        return _400_bad_request;
+    }
+
     if (req.request_method != GET) {
         return _405_method_not_allowed;
     }

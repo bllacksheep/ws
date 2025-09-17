@@ -68,13 +68,17 @@ main(int argc, char *argv[]) {
             return 1;
         }
 
-        ssize_t n = read(cfd, req, MAX_REQ_SIZE);
-        if (n == -1) {
+        ssize_t bytes_read = read(cfd, req, MAX_REQ_SIZE);
+        if (bytes_read == -1) {
             fprintf(stderr, "read error: fd: %d\n", cfd);
          }
-        const char* resp = handle_req(req);
+        const char* resp = handle_req(req, bytes_read);
 
-        write(cfd, resp, strlen(resp));
+        size_t n = strlen(resp);
+
+        if (n > 0) {
+            write(cfd, resp, n);
+        }
 
         close(cfd);
     }
