@@ -10,27 +10,25 @@ check_path(const char *uri) {
     return -1;
 }
 
+// in lieu of a real lexer/parser to be implemented
 // \r\n delimits request line and each header
 // \r\n\r\n\n delimtes field line section (headers)
 // raw_req_t is const
 raw_req_t
 parse_raw_bytes(const char *req, int len) {
-
-    // if len less that bare-minimum request size exit
+    // no \r\n\r\n at least, kill it.
+    // if (len <= 4) {
+    //     return (raw_req_t){ .is_http = -1 };
+    // }
 
     char *hdp = req;
     char *terminus = req;
-    unsigned int end = len;
 
     // set request line ; each line terminated with \r\n
-    while (!(hdp[0] == '\r' &&
-            hdp[1] == '\n')) {
-        hdp++;
-        terminus++; // no need to start from beginning
-        end--;
-        if (end == 0) {
-            // not delimeter found, bad request
-            return (raw_req_t){ .is_http = -1 };
+    for (int i = 0; i < len; i++) {
+        if (!(hdp[0] == '\r' && 
+              hdp[1] == '\n')) {
+            hdp++;
         }
     }
 
@@ -39,12 +37,15 @@ parse_raw_bytes(const char *req, int len) {
 
     // if garbase terminated by \r\n validate 
 
-    while (!(terminus[0] == '\r' &&
-           terminus[1] == '\n' &&
-           terminus[2] == '\r' &&
-           terminus[3] == '\n')) {
-       terminus++;
+    for (int i = 0; i < len; i++) {
+        if (!(terminus[0] == '\r' &&
+               terminus[1] == '\n' &&
+               terminus[2] == '\r' &&
+               terminus[3] == '\n')) {
+           terminus++;
+        }
     }
+
 
     *terminus = '\0';
     // advance to start of body
