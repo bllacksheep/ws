@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
@@ -8,6 +9,29 @@
 #include "http.h"
 // clean these up check bin size
 
+void
+handle_conn(unsigned int cfd) {
+    while(1) {
+        char req[MAX_REQ_SIZE + 1];
+        ssize_t bytes_read = read(cfd, req, MAX_REQ_SIZE);
+        req[MAX_REQ_SIZE] = '\0';
+
+        if (bytes_read <= 0) {
+            if (bytes_read == -1) {
+                fprintf(stderr, "error: reading from fd: %d\n", cfd);
+                break;
+             }
+        }
+        const char* resp = handle_req(req, bytes_read);
+
+        size_t n = strlen(resp);
+        if (n > 0 && write(cfd, resp, n) != (ssize_t)n) {
+            fprintf(stderr, "error: writing to fd: %d, %s\n", cfd, strerror(errno));
+            break;
+        }
+    }
+    return;
+}
 
 int
 main(int argc, char *argv[]) {
@@ -55,34 +79,31 @@ main(int argc, char *argv[]) {
 
     memset(&client, 0, sizeof(client));
     socklen_t cl = sizeof(client);
-    char req[MAX_REQ_SIZE + 1];
 
     unsigned int cfd;
+
     while (1) {
         // deque backlog as client socket
         cfd = accept(sfd, (struct sockaddr *)&client, &cl);
         if (cfd >= 0) {
             fprintf(stdout, "connect accept fd: %d\n", cfd);
         } else {
-            fprintf(stderr, "accept error: %s\n", strerror(errno));
+            fprintf(stderr, "error: accept on: %d, %s\n", cfd, strerror(errno));
             return 1;
         }
 
-        ssize_t bytes_read = read(cfd, req, MAX_REQ_SIZE);
-        if (bytes_read == -1) {
-            fprintf(stderr, "read error: fd: %d\n", cfd);
-         }
-        const char* resp = handle_req(req, bytes_read);
-
-        size_t n = strlen(resp);
-
-        if (n > 0) {
-            write(cfd, resp, n);
+        pid_t pid = fork();
+        if (pid == -1) {
+            fprintf(stderr, "error: accept on: %d, %s\n", pid, strerror(errno));
+            return 1;
+        } else if (pid == 0) {
+            close(sfd);
+            handle_conn(cfd);
+            exit(0);
+        } else {
+            close(cfd);
         }
-
-        close(cfd);
     }
-
     close(sfd);
 
     return 0;
