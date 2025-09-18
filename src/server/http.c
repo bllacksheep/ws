@@ -16,47 +16,46 @@ check_path(const char *uri) {
 // raw_req_t is const
 raw_req_t
 parse_raw_bytes(const char *req, int len) {
-    // no \r\n\r\n at least, kill it.
-    // if (len <= 4) {
-    //     return (raw_req_t){ .is_http = -1 };
-    // }
+    unsigned int valid = 0;
+    unsigned int invalid = -1;
 
-    char *hdp = req;
-    char *terminus = req;
+    if (len < 4) return (raw_req_t){.is_http = invalid}; 
 
-    // set request line ; each line terminated with \r\n
+    char *start_req = req;
+    char *start_hdp = req;
+    char *end_req = req;
+
+    // pos end of request line; terminated \r\n
     for (int i = 0; i < len; i++) {
-        if (!(hdp[0] == '\r' && 
-              hdp[1] == '\n')) {
-            hdp++;
+        if (!(start_hdp[0] == '\r' && 
+              start_hdp[1] == '\n')) {
+            start_hdp++;
         }
     }
 
-    *hdp = '\0';
-    hdp += 2;
-
-    // if garbase terminated by \r\n validate 
+    *start_hdp = '\0';
+    // advance to start of headers
+    start_hdp += 2;
 
     for (int i = 0; i < len; i++) {
-        if (!(terminus[0] == '\r' &&
-               terminus[1] == '\n' &&
-               terminus[2] == '\r' &&
-               terminus[3] == '\n')) {
-           terminus++;
+        if (!(end_req[0] == '\r' &&
+               end_req[1] == '\n' &&
+               end_req[2] == '\r' &&
+               end_req[3] == '\n')) {
+           end_req++;
         }
     }
 
-
-    *terminus = '\0';
+    *end_req = '\0';
     // advance to start of body
-    terminus += 4;
+    end_req += 4;
     
     // const
     raw_req_t raw = {
-        .request_line = req,
-        .request_headers = hdp,
-        .request_body = terminus,
-        .is_http = 0,
+        .request_line = start_req,
+        .request_headers = start_hdp,
+        .request_body = end_req,
+        .is_http = valid,
     };
 
     return raw;
@@ -107,63 +106,30 @@ initialize_request_line(const char *rl) {
     return r;
 }
 
+
 // rfc 9110
 req_t
-validate_http_request(const raw_req_t *req) {
-    // get headers into a hash table. 
-    // how I maintain a hash table per request
-    // how does this work with threading
-
-    req_t r = initialize_request_line(req->request_line);
-
-    if (r.request_method == -1) {
-        fprintf(stderr, "error: initialize request line unknown payload\n");
-        return r;
-    }
-
-    if (r.request_method != GET) {
-        fprintf(stderr, "error: initialize request line not GET method\n");
-        return r;
-    }
-
-    if (check_path(r.request_uri) != 0) {
-        fprintf(stderr, "error: initialize request line not /dial uri\n");
-        return r;
-    }
-
-    if (req->request_headers != NULL) {
-        // hash map
-        printf("%s\n", req->request_headers);
-    }
-
-    if (req->request_body != NULL) {
-        // shouldn't be required
-        printf("%s\n", req->request_body);
-    }
-
-    return r;
-}
-
-req_t
-parse_and_validate_http_request(const char *raw_buf, int buf_len) {
+parser_basic(const char *raw_buf, int buf_len) {
     raw_req_t raw_req = parse_raw_bytes(raw_buf, buf_len);
-    if(raw_req.is_http == -1) return (req_t){};
-
-    return validate_http_request(&raw_req);
+    if(raw_req.is_http == -1) return (req_t){ .request_method = UNKNOWN };
+    return initialize_request_line(raw_req.request_line);
 }
 
 const char *_405_method_not_allowed =
-    "HTTP/1.1 405 Method Not Allowed\r\n"
+    "\n\nHTTP/1.1 405 Method Not Allowed\r\n"
     "Allow: GET\r\n"
     "Content-Type: text/plain\r\n"
     "Content-Length: 18\r\n\r\n"
-    "Method Not Allowed";
+    "Method Not Allowed\n";
 
 const char *_400_bad_request =
-    "HTTP/1.1 400 Bad Request\r\n"
+    "\n\nHTTP/1.1 400 Bad Request\r\n"
     "Content-Type: text/plain\r\n"
-    "Content-Length: 18\r\n\r\n"
-    "that ain't it";
+    "Content-Length: 13\r\n\r\n"
+    "That Ain't It\n";
+
+const char *_200_ok =
+    "\n\nHTTP/1.1 200 OK\r\n";
 
 // handler returning response string
 const char *
@@ -172,19 +138,40 @@ handle_req(const char *raw_req_buf, int raw_buf_len) {
         return NULL;
     }
 
-    req_t req = parse_and_validate_http_request(raw_req_buf, raw_buf_len);
+    req_t req = parser_basic(raw_req_buf, raw_buf_len);
 
-    if (req.request_method == -1) {
+    if (req.request_method == UNKNOWN) {
+        fprintf(stderr, "error: initialize request line unknown payload\n");
+        return _400_bad_request;
+    }
+
+    if (check_path(req.request_uri) != 0) {
+        fprintf(stderr, "error: initialize request line uri expectet /chat\n");
         return _400_bad_request;
     }
 
     if (req.request_method != GET) {
+        fprintf(stderr, "error: initialize request line not GET method\n");
         return _405_method_not_allowed;
     }
+
+
+
+    // if (req->request_headers != NULL) {
+    //     // hash map
+    //     printf("%s\n", req->request_headers);
+    // }
+    //
+    // if (req->request_body != NULL) {
+    //     // shouldn't be required
+    //     printf("%s\n", req->request_body);
+    // }
+
+
 
     // validate websocket request headers etc
     // bad request if malformed
 
-    return NULL;
+    return _200_ok;
 }
 

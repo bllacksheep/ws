@@ -2,7 +2,7 @@
 #define _HTTP_h
 
 #define MAX_REQ_SIZE 1024
-#define ENDPOINT "/dial"
+#define ENDPOINT "/chat"
 
 // no "update" api so const should be fine
 typedef struct {
@@ -29,6 +29,7 @@ typedef struct {
 } http_body_t;
 
 typedef enum {
+    UNKNOWN,
     GET,
     POST,
 } method_t;
