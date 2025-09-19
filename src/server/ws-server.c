@@ -11,9 +11,8 @@
 
 void handle_conn(unsigned int cfd) {
   while (1) {
-    char req[MAX_REQ_SIZE + 1];
+    char req[MAX_REQ_SIZE + 1] = {0};
     ssize_t bytes_read = read(cfd, req, MAX_REQ_SIZE);
-    req[MAX_REQ_SIZE] = '\0';
 
     if (bytes_read <= 0) {
       if (bytes_read == -1) {
