@@ -22,6 +22,7 @@ void handle_conn(unsigned int cfd) {
     }
     const char *resp = handle_req(req, bytes_read);
 
+    // partial writes and close to be implemented
     size_t n = strlen(resp);
     if (n > 0 && write(cfd, resp, n) != (ssize_t)n) {
       fprintf(stderr, "error: writing to fd: %d, %s\n", cfd, strerror(errno));
