@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
   struct epoll_event ev, events[MAX_EVENTS];
 
   if ((efd = epoll_create1(0)) == -1) {
-    fprintf(stderr, "error: createing epoll instance %s", strerror(errno));
+    fprintf(stderr, "error: createine epoll instance %s\n", strerror(errno));
     return 1;
   }
 
@@ -100,7 +100,7 @@ int main(int argc, char *argv[]) {
   ev.data.fd = sfd;
 
   if (epoll_ctl(efd, EPOLL_CTL_ADD, sfd, &ev) == -1) {
-    fprintf(stderr, "error: epoll add sfd to instance list failed %s",
+    fprintf(stderr, "error: epoll add sfd to instance list failed %s\n",
             strerror(errno));
     return 1;
   }
@@ -109,7 +109,7 @@ int main(int argc, char *argv[]) {
     // blocks
     nfds = epoll_wait(efd, events, MAX_EVENTS, 0);
     if (nfds == -1) {
-      fprintf(stderr, "error: epoll_wait %s", strerror(errno));
+      fprintf(stderr, "error: epoll_wait %s\n", strerror(errno));
     }
     // if > 0
     for (int n = 0; n < nfds; n++) {
@@ -129,7 +129,7 @@ int main(int argc, char *argv[]) {
         ev.data.fd = cfd;
 
         if (epoll_ctl(efd, EPOLL_CTL_ADD, cfd, &ev) == -1) {
-          fprintf(stderr, "error: epoll add cfd to instance list failed %s",
+          fprintf(stderr, "error: epoll add cfd to instance list failed %s\n",
                   strerror(errno));
         }
         // is this naieve?
