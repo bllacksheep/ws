@@ -4,3 +4,8 @@ Bare minimum implementation of rfc 2616, 9110 and 9112 to facilitate bootstrappi
 make clean
 make server_db
 ```
+bench
+```
+set ~/siege/siege.conf `connection = keep-alive`
+siege -c1 -r10 http://localhost:443/chat
+```
