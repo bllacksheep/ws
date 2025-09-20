@@ -125,7 +125,7 @@ int main(int argc, char *argv[]) {
         // need accept4 to set SOCK_NONBLOCK
         setnonblocking(cfd);
 
-        ev.events = EPOLLIN | EPOLLET;
+        ev.events = EPOLLIN; //| EPOLLET;
         ev.data.fd = cfd;
 
         if (epoll_ctl(efd, EPOLL_CTL_ADD, cfd, &ev) == -1) {
@@ -134,7 +134,7 @@ int main(int argc, char *argv[]) {
         }
         // is this naieve?
       } else {
-        handle_conn(cfd);
+        handle_conn(events[n].data.fd);
       }
     }
   }
