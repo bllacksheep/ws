@@ -52,9 +52,16 @@ int main(int argc, char *argv[]) {
     ip.s_addr = htonl(INADDR_LOOPBACK);
   }
 
-  sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+  if ((sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1) {
+    fprintf(stderr, "error: server socket create %s\n", strerror(errno));
+    return 1;
+  }
+
   int opt = 1;
-  setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+  if (setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
+    fprintf(stderr, "error: setting sockopts %s\n", strerror(errno));
+    return 1;
+  }
 
   if (sfd == -1) {
     fprintf(stderr, "socket error: %s\n", strerror(errno));
@@ -76,20 +83,22 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "listen error: %s\n", strerror(errno));
     return 1;
   }
+
   printf("Listening on 127.0.0.1:%d\n", PORT);
 
   memset(&client, 0, sizeof(client));
   socklen_t cl = sizeof(client);
 
   struct epoll_event ev, events[MAX_EVENTS];
-  efd = epoll_create1(0);
-  if (efd == -1) {
+
+  if ((efd = epoll_create1(0)) == -1) {
     fprintf(stderr, "error: createing epoll instance %s", strerror(errno));
     return 1;
   }
 
   ev.events = EPOLLIN;
   ev.data.fd = sfd;
+
   if (epoll_ctl(efd, EPOLL_CTL_ADD, sfd, &ev) == -1) {
     fprintf(stderr, "error: epoll add sfd to instance list failed %s",
             strerror(errno));
@@ -98,7 +107,7 @@ int main(int argc, char *argv[]) {
 
   for (;;) {
     // blocks
-    nfds = epoll_wait(efd, events, MAX_EVENTS, -1);
+    nfds = epoll_wait(efd, events, MAX_EVENTS, 0);
     if (nfds == -1) {
       fprintf(stderr, "error: epoll_wait %s", strerror(errno));
     }
@@ -106,8 +115,7 @@ int main(int argc, char *argv[]) {
     for (int n = 0; n < nfds; n++) {
       if (events[n].data.fd == sfd) {
         // deque backlog as client socket
-        cfd = accept(sfd, (struct sockaddr *)&client, &cl);
-        if (cfd >= 0) {
+        if ((cfd = accept(sfd, (struct sockaddr *)&client, &cl)) >= 0) {
           fprintf(stdout, "connection accepted on fd: %d\n", cfd);
         } else {
           fprintf(stderr, "error: accept on: %d, %s\n", cfd, strerror(errno));
@@ -124,7 +132,8 @@ int main(int argc, char *argv[]) {
           fprintf(stderr, "error: epoll add cfd to instance list failed %s",
                   strerror(errno));
         }
-      } else if (events[n].data.fd == cfd) {
+        // is this naieve?
+      } else {
         handle_conn(cfd);
       }
     }
