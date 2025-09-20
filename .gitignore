@@ -1,3 +1,4 @@
 bin/
+logs/
 build/
 compile_commands.json
