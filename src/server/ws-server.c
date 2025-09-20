@@ -1,40 +1,49 @@
 #include "ws-server.h"
 #include "http.h"
 #include <errno.h>
+#include <fcntl.h>
 #include <netinet/ip.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
 // clean these up check bin size
 
 void handle_conn(unsigned int cfd) {
-  while (1) {
-    char req[MAX_REQ_SIZE + 1] = {0};
-    ssize_t bytes_read = read(cfd, req, MAX_REQ_SIZE);
+  char req[MAX_REQ_SIZE + 1] = {0};
+  // non-blocking, so should read MAX_REQ_SIZE
+  // if data then can't be read until next event
+  ssize_t bytes_read = read(cfd, req, MAX_REQ_SIZE);
 
-    if (bytes_read <= 0) {
-      if (bytes_read == -1) {
-        fprintf(stderr, "error: reading from fd: %d\n", cfd);
-        break;
-      }
+  if (bytes_read <= 0) {
+    if (bytes_read == -1) {
+      fprintf(stderr, "error: reading from fd: %d\n", cfd);
     }
+  } else {
     const char *resp = handle_req(req, bytes_read);
 
     // partial writes and close to be implemented
     size_t n = strlen(resp);
     if (n > 0 && write(cfd, resp, n) != (ssize_t)n) {
       fprintf(stderr, "error: writing to fd: %d, %s\n", cfd, strerror(errno));
-      break;
     }
   }
   return;
 }
 
+void setnonblocking(unsigned int fd) {
+  int flags = fcntl(fd, F_GETFL);
+
+  if (!(flags & O_NONBLOCK)) {
+    fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+  }
+}
+
 int main(int argc, char *argv[]) {
 
-  unsigned int sfd;
+  unsigned int sfd, cfd, efd, nfds;
   struct sockaddr_in server;
   struct sockaddr_in client;
   struct in_addr ip;
@@ -72,28 +81,52 @@ int main(int argc, char *argv[]) {
   memset(&client, 0, sizeof(client));
   socklen_t cl = sizeof(client);
 
-  unsigned int cfd;
+  struct epoll_event ev, events[MAX_EVENTS];
+  efd = epoll_create1(0);
+  if (efd == -1) {
+    fprintf(stderr, "error: createing epoll instance %s", strerror(errno));
+    return 1;
+  }
 
-  while (1) {
-    // deque backlog as client socket
-    cfd = accept(sfd, (struct sockaddr *)&client, &cl);
-    if (cfd >= 0) {
-      fprintf(stdout, "connect accept fd: %d\n", cfd);
-    } else {
-      fprintf(stderr, "error: accept on: %d, %s\n", cfd, strerror(errno));
-      return 1;
+  ev.events = EPOLLIN;
+  ev.data.fd = sfd;
+  if (epoll_ctl(efd, EPOLL_CTL_ADD, sfd, &ev) == -1) {
+    fprintf(stderr, "error: epoll add sfd to instance list failed %s",
+            strerror(errno));
+    return 1;
+  }
+
+  for (;;) {
+    // blocks
+    nfds = epoll_wait(efd, events, MAX_EVENTS, -1);
+    if (nfds == -1) {
+      fprintf(stderr, "error: epoll_wait %s", strerror(errno));
     }
+    // if > 0
+    for (int n = 0; n < nfds; n++) {
+      if (events[n].data.fd == sfd) {
+        // deque backlog as client socket
+        cfd = accept(sfd, (struct sockaddr *)&client, &cl);
+        if (cfd >= 0) {
+          fprintf(stdout, "connection accepted on fd: %d\n", cfd);
+        } else {
+          fprintf(stderr, "error: accept on: %d, %s\n", cfd, strerror(errno));
+          return 1;
+        }
 
-    pid_t pid = fork();
-    if (pid == -1) {
-      fprintf(stderr, "error: accept on: %d, %s\n", pid, strerror(errno));
-      return 1;
-    } else if (pid == 0) {
-      close(sfd);
-      handle_conn(cfd);
-      exit(0);
-    } else {
-      close(cfd);
+        // need accept4 to set SOCK_NONBLOCK
+        setnonblocking(cfd);
+
+        ev.events = EPOLLIN | EPOLLET;
+        ev.data.fd = cfd;
+
+        if (epoll_ctl(efd, EPOLL_CTL_ADD, cfd, &ev) == -1) {
+          fprintf(stderr, "error: epoll add cfd to instance list failed %s",
+                  strerror(errno));
+        }
+      } else if (events[n].data.fd == cfd) {
+        handle_conn(cfd);
+      }
     }
   }
   close(sfd);
