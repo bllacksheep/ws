@@ -33,12 +33,17 @@ void handle_conn(unsigned int cfd) {
   return;
 }
 
-void setnonblocking(unsigned int fd) {
+int setnonblocking(unsigned int fd) {
   int flags = fcntl(fd, F_GETFL);
 
   if (!(flags & O_NONBLOCK)) {
-    fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+      fprintf(stderr, "error: fnctl setting O_NONBLOCK on fd %d %s\n", fd,
+              strerror(errno));
+      return -1;
+    }
   }
+  return 0;
 }
 
 int main(int argc, char *argv[]) {
@@ -106,12 +111,11 @@ int main(int argc, char *argv[]) {
   }
 
   for (;;) {
-    // blocks
-    nfds = epoll_wait(efd, events, MAX_EVENTS, 0);
-    if (nfds == -1) {
+    if ((nfds = epoll_wait(efd, events, MAX_EVENTS, 0)) == -1) {
       fprintf(stderr, "error: epoll_wait %s\n", strerror(errno));
+      return 1;
     }
-    // if > 0
+
     for (int n = 0; n < nfds; n++) {
       if (events[n].data.fd == sfd) {
         // deque backlog as client socket
@@ -123,7 +127,9 @@ int main(int argc, char *argv[]) {
         }
 
         // need accept4 to set SOCK_NONBLOCK
-        setnonblocking(cfd);
+        if (setnonblocking(cfd) == -1) {
+          return 1;
+        }
 
         ev.events = EPOLLIN; //| EPOLLET;
         ev.data.fd = cfd;
