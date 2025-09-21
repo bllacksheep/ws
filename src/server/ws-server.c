@@ -157,9 +157,8 @@ int main(int argc, char *argv[]) {
           fprintf(stderr, "error: epoll add cfd to instance list failed %s\n",
                   strerror(errno));
         }
-        // is this naieve?
-      } else {
-        handle_conn(events[n].data.fd, efd);
+      } else if (handle_conn(events[n].data.fd, efd) == -1) {
+        fprintf(stderr, "error: handle connection error %s\n", strerror(errno));
       }
     }
   }
