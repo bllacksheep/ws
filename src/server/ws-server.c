@@ -11,28 +11,40 @@
 #include <unistd.h>
 // clean these up check bin size
 
-void handle_conn(unsigned int cfd, unsigned int epfd) {
+unsigned int handle_conn(unsigned int cfd, unsigned int epfd) {
   char req[MAX_REQ_SIZE + 1] = {0};
   // non-blocking, so should read MAX_REQ_SIZE
   // if data then can't be read until next event
   ssize_t bytes_read = read(cfd, req, MAX_REQ_SIZE);
 
-  // 0 EOF == tcp CLOSE_WAIT, explicity remove from interest list
+  // 0 EOF == tcp CLOSE_WAIT
   if (bytes_read == 0) {
+    fprintf(stdout, "info: client closed connection: %d\n", cfd);
     close(cfd);
     epoll_ctl(epfd, EPOLL_CTL_DEL, cfd, NULL);
+    return 0;
   } else if (bytes_read == -1) {
     fprintf(stderr, "error: reading from fd: %d\n", cfd);
   } else {
     const char *resp = handle_req(req, bytes_read);
 
-    // partial writes and close to be implemented
+    // partial write handling to be implemented
     size_t n = strlen(resp);
-    if (n > 0 && write(cfd, resp, n) != (ssize_t)n) {
-      fprintf(stderr, "error: writing to fd: %d, %s\n", cfd, strerror(errno));
+    if (n > 0) {
+      ssize_t bytes_written = write(cfd, resp, n);
+      if (bytes_written == -1) {
+        fprintf(stderr, "error: write failed on fd: %d, %s\n", cfd,
+                strerror(errno));
+        return -1;
+      }
+      if (bytes_written != (ssize_t)n) {
+        fprintf(stderr, "error: partial write on fd: %d, %s\n", cfd,
+                strerror(errno));
+        return -1;
+      }
     }
   }
-  return;
+  return 0;
 }
 
 int setnonblocking(unsigned int fd) {
@@ -67,11 +79,7 @@ int main(int argc, char *argv[]) {
   int opt = 1;
   if (setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
     fprintf(stderr, "error: setting sockopts %s\n", strerror(errno));
-    return 1;
-  }
-
-  if (sfd == -1) {
-    fprintf(stderr, "socket error: %s\n", strerror(errno));
+    close(sfd);
     return 1;
   }
 
@@ -83,11 +91,13 @@ int main(int argc, char *argv[]) {
 
   if (bind(sfd, (struct sockaddr *)&server, sizeof(server)) == -1) {
     fprintf(stderr, "bind error: %s\n", strerror(errno));
+    close(sfd);
     return 1;
   }
 
   if (listen(sfd, LISTEN_BACKLOG) == -1) {
     fprintf(stderr, "listen error: %s\n", strerror(errno));
+    close(sfd);
     return 1;
   }
 
@@ -100,6 +110,8 @@ int main(int argc, char *argv[]) {
 
   if ((efd = epoll_create1(0)) == -1) {
     fprintf(stderr, "error: createine epoll instance %s\n", strerror(errno));
+    close(sfd);
+    close(efd);
     return 1;
   }
 
@@ -109,12 +121,16 @@ int main(int argc, char *argv[]) {
   if (epoll_ctl(efd, EPOLL_CTL_ADD, sfd, &ev) == -1) {
     fprintf(stderr, "error: epoll add sfd to instance list failed %s\n",
             strerror(errno));
+    close(sfd);
+    close(efd);
     return 1;
   }
 
   for (;;) {
     if ((nfds = epoll_wait(efd, events, MAX_EVENTS, 0)) == -1) {
       fprintf(stderr, "error: epoll_wait %s\n", strerror(errno));
+      close(sfd);
+      close(efd);
       return 1;
     }
 
@@ -125,11 +141,12 @@ int main(int argc, char *argv[]) {
           fprintf(stdout, "connection accepted on fd: %d\n", cfd);
         } else {
           fprintf(stderr, "error: accept on: %d, %s\n", cfd, strerror(errno));
-          return 1;
         }
 
         // need accept4 to set SOCK_NONBLOCK
         if (setnonblocking(cfd) == -1) {
+          close(sfd);
+          close(efd);
           return 1;
         }
 
