@@ -11,16 +11,18 @@
 #include <unistd.h>
 // clean these up check bin size
 
-void handle_conn(unsigned int cfd) {
+void handle_conn(unsigned int cfd, unsigned int epfd) {
   char req[MAX_REQ_SIZE + 1] = {0};
   // non-blocking, so should read MAX_REQ_SIZE
   // if data then can't be read until next event
   ssize_t bytes_read = read(cfd, req, MAX_REQ_SIZE);
 
-  if (bytes_read <= 0) {
-    if (bytes_read == -1) {
-      fprintf(stderr, "error: reading from fd: %d\n", cfd);
-    }
+  // 0 EOF == tcp CLOSE_WAIT, explicity remove from interest list
+  if (bytes_read == 0) {
+    close(cfd);
+    epoll_ctl(epfd, EPOLL_CTL_DEL, cfd, NULL);
+  } else if (bytes_read == -1) {
+    fprintf(stderr, "error: reading from fd: %d\n", cfd);
   } else {
     const char *resp = handle_req(req, bytes_read);
 
@@ -140,7 +142,7 @@ int main(int argc, char *argv[]) {
         }
         // is this naieve?
       } else {
-        handle_conn(events[n].data.fd);
+        handle_conn(events[n].data.fd, efd);
       }
     }
   }
