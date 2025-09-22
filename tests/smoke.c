@@ -15,6 +15,7 @@ void setup(void) {
   cr_assert(pid >= 0, "error: fork");
   if (pid == 0) {
     execl(SERVER, SERVER, (char *)NULL);
+    // won't run if execl succeeds
     perror("error: exec");
     exit(1);
   } else {
@@ -30,4 +31,6 @@ void teardown(void) {
 
 TestSuite(smoke, .init = setup, .fini = teardown, .disabled = 0);
 
-Test(smoke, conn) { cr_assert(1, "hello"); }
+Test(smoke, basic) { cr_assert(1, "hello"); }
+
+Test(smoke, siege) { cr_assert(1, "hello"); }
