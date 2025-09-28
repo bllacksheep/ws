@@ -13,7 +13,7 @@ test: testtest
 
 server_db: bin/server
 
-bin/server: build/ws-server.o build/http.o
+bin/server: build/ws-server.o build/http.o build/ip.o
 	gcc -g $(LDFLAGS) -o bin/server build/ws-server.o build/http.o build/ip.o
 
 build/ws-server.o: src/server/ws-server.c
