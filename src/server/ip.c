@@ -67,8 +67,7 @@ uint32_t atoip(char *in_ipstr, size_t ipstr_len) {
 }
 
 // output { '1', '2', '7' '.' '0' '.' '0' '.' '1' '\0'}
-char *iptoa(uint32_t ip) {
-  char str[LEN] = {0};
+char *iptoa(uint32_t ip, char *str) {
   uint32_t curr_octet, next_octet = BITS;
   uint32_t oct_pos, str_pos = 0;
   uint32_t tot_octet = 0;

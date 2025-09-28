@@ -14,6 +14,6 @@
 
 uint32_t atoip(char *, size_t);
 
-char *iptoa(uint32_t);
+char *iptoa(uint32_t, char *);
 
 #endif
