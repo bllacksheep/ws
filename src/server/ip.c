@@ -63,12 +63,11 @@ uint32_t atoip(char *in_ipstr, size_t ipstr_len) {
     // how many digits were there in the octet
     pos++;
   }
-  printf("%d\n", ip);
   return ip;
 }
 
 // output { '1', '2', '7' '.' '0' '.' '0' '.' '1' '\0'}
-void iptoa(uint32_t ip) {
+char *iptoa(uint32_t ip) {
   char str[LEN] = {0};
   uint32_t curr_octet, next_octet = BITS;
   uint32_t oct_pos, str_pos = 0;
@@ -102,7 +101,7 @@ void iptoa(uint32_t ip) {
     }
     tot_octet++;
   }
-  printf("%s\n", str);
+  return str;
 }
 
 /*

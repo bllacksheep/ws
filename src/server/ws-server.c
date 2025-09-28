@@ -75,17 +75,22 @@ int main(int argc, char *argv[]) {
   struct in_addr ip;
   char *address;
   in_port_t port;
+  unsigned int rawip = 0;
 
 #define DEFAULT INADDR_LOOPBACK
   // bin/server 127.0.0.1 8080
   if (argc < 2) {
     ip.s_addr = htonl(DEFAULT);
+    // convert to string
     address = iptoa(DEFAULT);
     port = htons((unsigned short)PORT);
   }
   // all other args discarded
   if (argc >= 3) {
-    address = atoip(argv[1], strlen(argv[1]));
+    // convert to useable
+    address = argv[1];
+    rawip = atoip(argv[1], strlen(argv[1]));
+    ip.s_addr = htonl(rawip);
     unsigned short port_atoi = atoi(argv[2]);
     port = htons((unsigned short)port_atoi);
   }
