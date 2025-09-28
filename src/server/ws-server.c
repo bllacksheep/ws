@@ -1,5 +1,6 @@
 #include "ws-server.h"
 #include "http.h"
+#include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <netinet/ip.h>
@@ -71,9 +72,22 @@ int main(int argc, char *argv[]) {
   struct sockaddr_in server;
   struct sockaddr_in client;
   struct in_addr ip;
+  char *address;
+  in_port_t port;
 
+  // bin/server localhost 8080
   if (argc < 2) {
     ip.s_addr = htonl(INADDR_LOOPBACK);
+    printf("%x\n", INADDR_LOOPBACK);
+    // address = inet_ntop(AF_INET, INADDR_LOOPBACK, &address);
+    port = htons((unsigned short)PORT);
+  }
+  if (argc >= 3) {
+    // all other args discarded
+    inet_pton(AF_INET, argv[1], &ip);
+    address = argv[1];
+    unsigned short port_atoi = atoi(argv[2]);
+    port = htons((unsigned short)port_atoi);
   }
 
   if ((sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1) {
@@ -94,7 +108,7 @@ int main(int argc, char *argv[]) {
   memset(&server, 0, sizeof(server));
 
   server.sin_family = AF_INET;
-  server.sin_port = htons((unsigned short)PORT);
+  server.sin_port = port;
   server.sin_addr = ip;
 
   if (bind(sfd, (struct sockaddr *)&server, sizeof(server)) == -1) {
@@ -113,7 +127,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  printf("Listening on 127.0.0.1:%d\n", PORT);
+  printf("Listening on 127.0.0.1:%d\n", port);
 
   memset(&client, 0, sizeof(client));
   socklen_t cl = sizeof(client);
