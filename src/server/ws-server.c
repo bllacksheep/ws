@@ -79,7 +79,8 @@ int main(int argc, char *argv[]) {
 #define DEFAULT INADDR_LOOPBACK
   // bin/server 127.0.0.1 8080
   if (argc < 2) {
-    ip.s_addr = htonl(DEFAULT) address = iptoa(DEFAULT);
+    ip.s_addr = htonl(DEFAULT);
+    address = iptoa(DEFAULT);
     port = htons((unsigned short)PORT);
   }
   // all other args discarded
