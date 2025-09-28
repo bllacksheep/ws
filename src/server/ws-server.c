@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
   char *address;
   in_port_t port;
 
-  // bin/server localhost 8080
+  // bin/server 127.0.0.1 8080
   if (argc < 2) {
     ip.s_addr = htonl(INADDR_LOOPBACK);
     printf("%x\n", INADDR_LOOPBACK);
