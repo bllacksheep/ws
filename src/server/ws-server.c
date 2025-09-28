@@ -1,5 +1,6 @@
 #include "ws-server.h"
 #include "http.h"
+#include "ip.h"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -75,17 +76,15 @@ int main(int argc, char *argv[]) {
   char *address;
   in_port_t port;
 
+#define DEFAULT INADDR_LOOPBACK
   // bin/server 127.0.0.1 8080
   if (argc < 2) {
-    ip.s_addr = htonl(INADDR_LOOPBACK);
-    printf("%x\n", INADDR_LOOPBACK);
-    // address = inet_ntop(AF_INET, INADDR_LOOPBACK, &address);
+    ip.s_addr = htonl(DEFAULT) address = iptoa(DEFAULT);
     port = htons((unsigned short)PORT);
   }
+  // all other args discarded
   if (argc >= 3) {
-    // all other args discarded
-    inet_pton(AF_INET, argv[1], &ip);
-    address = argv[1];
+    address = atoip(argv[1], strlen(argv[1]));
     unsigned short port_atoi = atoi(argv[2]);
     port = htons((unsigned short)port_atoi);
   }
@@ -127,7 +126,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  printf("Listening on 127.0.0.1:%d\n", port);
+  printf("Listening on %s:%d\n", address, port);
 
   memset(&client, 0, sizeof(client));
   socklen_t cl = sizeof(client);
