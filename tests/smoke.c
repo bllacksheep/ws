@@ -11,6 +11,7 @@
 #define SERVERBIN "bin/server"
 
 static pid_t server_pid;
+static pid_t siege_pid;
 
 void setup(void) {
   char *path = realpath(SERVERBIN, NULL);
@@ -31,16 +32,34 @@ void setup(void) {
 }
 
 void teardown(void) {
-  kill(server_pid, SIGTERM);
-  int status;
-  waitpid(server_pid, &status, 0);
-  if (WIFEXITED(status)) {
-    printf("exit status: %d", WEXITSTATUS(status));
+  pid_t pids[2] = {
+      server_pid,
+      siege_pid,
+  };
+
+  size_t num_pids = sizeof(pids) / sizeof(pids[0]);
+  for (int i = 0; i < num_pids; i++) {
+    kill(pids[i], SIGTERM);
+    int status;
+    waitpid(pids[i], &status, 0);
+    if (WIFEXITED(status)) {
+      printf("exit status: %d", WEXITSTATUS(status));
+    }
   }
 }
 
 TestSuite(smoke, .init = setup, .fini = teardown, .disabled = 0);
 
-Test(smoke, basic) { cr_assert(1, "hello"); }
+Test(smoke, basic) {
+  pid_t pid = fork();
+  if (pid == 0) {
+    char address[100];
+    sprintf(address, "http://%s:%s/chat", ADDR, PORT);
+    execl("/usr/local/bin/siege", "siege", "-c5", "-r2", address, (char *)NULL);
+  } else {
+    siege_pid = pid;
+    sleep(1);
+  }
+}
 
 // Test(smoke, siege) { cr_assert(1, "hello"); }
