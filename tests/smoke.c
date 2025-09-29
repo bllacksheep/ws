@@ -1,20 +1,26 @@
 #include <criterion/criterion.h>
 #include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
-#define PORT 8080
-#define SERVER "bin/server"
+#define PORT "4443"
+#define ADDR "127.0.0.1"
+#define SERVERBIN "bin/server"
 
 static pid_t server_pid;
 
 void setup(void) {
+  char *path = realpath(SERVERBIN, NULL);
+  cr_assert(path != NULL, "error: realpath");
+
   pid_t pid = fork();
-  cr_assert(pid >= 0, "error: fork");
+  cr_assert(pid != -1, "error: fork");
+
   if (pid == 0) {
-    execl(SERVER, SERVER, (char *)NULL);
+    execl(path, "server", ADDR, PORT, (char *)NULL);
     // won't run if execl succeeds
     perror("error: exec");
     exit(1);
@@ -29,7 +35,7 @@ void teardown(void) {
   int status;
   waitpid(server_pid, &status, 0);
   if (WIFEXITED(status)) {
-    printf("exist status: %d", WEXITSTATUS(status));
+    printf("exit status: %d", WEXITSTATUS(status));
   }
 }
 
