@@ -72,12 +72,13 @@ int main(int argc, char *argv[]) {
   unsigned int sfd, cfd, efd, nfds;
   struct sockaddr_in server;
   struct sockaddr_in client;
+  unsigned int rawip = 0;
   struct in_addr ip;
   char *address;
   in_port_t port;
-  unsigned int rawip = 0;
 
 #define DEFAULT INADDR_LOOPBACK
+
   // bin/server 127.0.0.1 8080
   if (argc < 2) {
     ip.s_addr = htonl(DEFAULT);
@@ -88,9 +89,9 @@ int main(int argc, char *argv[]) {
   }
   // all other args discarded
   if (argc >= 3) {
-    // convert to useable
     address = argv[1];
-    rawip = atoip(argv[1], strlen(argv[1]));
+    // convert to useable
+    rawip = atoip(address, strlen(address));
     ip.s_addr = htonl(rawip);
     unsigned short port_atoi = atoi(argv[2]);
     port = htons((unsigned short)port_atoi);
@@ -133,7 +134,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  printf("Listening on %s:%d\n", address, port);
+  printf("Listening on %s:%d\n", address, ntohs(port));
 
   memset(&client, 0, sizeof(client));
   socklen_t cl = sizeof(client);
