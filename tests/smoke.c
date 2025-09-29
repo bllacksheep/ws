@@ -23,7 +23,7 @@ void setup(void) {
   if (pid == 0) {
     execl(path, "server", ADDR, PORT, (char *)NULL);
     // won't run if execl succeeds
-    perror("error: exec");
+    perror("error: server exec");
     exit(1);
   } else {
     server_pid = pid;
@@ -56,6 +56,8 @@ Test(smoke, basic) {
     char address[100];
     sprintf(address, "http://%s:%s/chat", ADDR, PORT);
     execl("/usr/local/bin/siege", "siege", "-c5", "-r2", address, (char *)NULL);
+    perror("error: siege exec");
+    exit(1);
   } else {
     siege_pid = pid;
     sleep(1);
