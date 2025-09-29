@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
   if (argc < 2) {
     ip.s_addr = htonl(DEFAULT);
     // convert to string
-    char *buf[20] = {0};
+    char buf[20] = {0};
     address = iptoa(DEFAULT, buf);
     port = htons((unsigned short)PORT);
   }
