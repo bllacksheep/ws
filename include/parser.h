@@ -1,13 +1,24 @@
 #ifndef _Parser_h
 #define _Parser_h
 
-typedef enum tokens_t {
+typedef enum {
   METHOD,
   PATH,
   VERSION,
   HEADER,
-} tokens_t;
+} token_t;
 
-tokens_t *Parse(char *);
+typedef enum {
+  STATUS_LINE,
+  FIELD_LINE,
+  HAS_BODY,
+  MORE_BODY,
+} state_t;
+
+typedef struct {
+  state_t state;
+} context_t;
+
+token_t *Parse(char *);
 
 #endif
