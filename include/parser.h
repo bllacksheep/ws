@@ -9,6 +9,7 @@ typedef enum {
 } token_t;
 
 typedef enum {
+  IDLE,
   STATUS_LINE,
   FIELD_LINE,
   HAS_BODY,
@@ -18,6 +19,8 @@ typedef enum {
 typedef struct {
   state_t state;
 } context_t;
+
+state_t state = IDLE;
 
 token_t *Parse(char *);
 
