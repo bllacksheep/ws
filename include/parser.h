@@ -16,6 +16,7 @@ typedef enum {
   MORE_BODY,
 } state_t;
 
+// ctx exposes the state machine
 typedef struct {
   state_t state;
 } context_t;
