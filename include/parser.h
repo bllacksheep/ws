@@ -1,6 +1,7 @@
 #ifndef _Parser_h
 #define _Parser_h
 
+//
 typedef enum {
   METHOD,
   PATH,
@@ -17,6 +18,7 @@ typedef enum {
 } state_t;
 
 // ctx exposes the state machine
+// this needs to exist in http.h
 typedef struct {
   state_t state;
 } context_t;

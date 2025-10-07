@@ -1,6 +1,6 @@
-#include "ws-server.h"
 #include "http.h"
 #include "ip.h"
+#include "ws-server.h"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -20,6 +20,7 @@ unsigned int handle_conn(unsigned int cfd, unsigned int epfd) {
   ssize_t bytes_read = read(cfd, req, MAX_REQ_SIZE);
 
   // 0 EOF == tcp CLOSE_WAIT
+  // TODO: handle this back in server code
   if (bytes_read == 0) {
     fprintf(stdout, "info: client closed connection: %d\n", cfd);
     if (epoll_ctl(epfd, EPOLL_CTL_DEL, cfd, NULL) == -1) {
