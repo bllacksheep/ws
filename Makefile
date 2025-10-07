@@ -10,11 +10,11 @@ test: testtest
 
 server_db: bin/server
 
-bin/server: build/ws-server.o build/http.o build/ip.o
-	gcc -g $(LDFLAGS) -o bin/server build/ws-server.o build/http.o build/ip.o
+bin/server: build/server.o build/http.o build/ip.o
+	gcc -g $(LDFLAGS) -o bin/server build/server.o build/http.o build/ip.o
 
-build/ws-server.o: src/server/ws-server.c
-	gcc -Iinclude -g -c src/server/ws-server.c -o build/ws-server.o
+build/server.o: src/server/server.c
+	gcc -Iinclude -g -c src/server/server.c -o build/server.o
 
 build/http.o: src/server/http.c
 	gcc -Iinclude -g -c src/server/http.c -o build/http.o
