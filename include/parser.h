@@ -3,18 +3,21 @@
 
 //
 typedef enum {
-  METHOD,
-  PATH,
-  VERSION,
-  HEADER,
+  T_METHOD,
+  T_PATH,
+  T_VERSION,
+  T_HEADER,
+  T_SPACE,
+  T_SEPARATOR,
+  T_TERMINATOR,
 } token_t;
 
 typedef enum {
-  IDLE,
-  STATUS_LINE,
-  FIELD_LINE,
-  HAS_BODY,
-  MORE_BODY,
+  S_IDLE,
+  S_STATUS_LINE,
+  S_FIELD_LINE,
+  S_HAS_BODY,
+  S_MORE_BODY,
 } state_t;
 
 // ctx exposes the state machine
@@ -23,8 +26,8 @@ typedef struct {
   state_t state;
 } context_t;
 
-state_t state = IDLE;
+state_t state = S_IDLE;
 
-token_t *Parse(char *);
+void Parse(char *, token_t *);
 
 #endif
