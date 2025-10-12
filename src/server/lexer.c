@@ -4,10 +4,12 @@
 
 typedef enum {
   CHAR,
+  NUM,
   SPACE,
   SLASH,
   CARRIAGE,
   NEWLINE,
+  SPECIAL,
   DOT,
   COLON,
 } stream_type_t;
@@ -28,13 +30,16 @@ void tokenize_request_stream(char *input) {
     if (isalpha(input[i])) {
       token.val = input[i];
       token.type = CHAR;
+    } else if (isdigit(input[i])) {
+      token.val = input[i];
+      token.type = NUM;
     } else if (input[i] == '\r') {
       token.val = input[i];
       token.type = CARRIAGE;
     } else if (input[i] == '\n') {
       token.val = input[i];
       token.type = NEWLINE;
-    } else if (input[i] == ' ') {
+    } else if (isblank(input[i])) {
       token.val = input[i];
       token.type = SPACE;
     } else if (input[i] == '/') {
@@ -42,20 +47,23 @@ void tokenize_request_stream(char *input) {
       token.type = SLASH;
     } else if (input[i] == '.') {
       token.val = input[i];
-      token.val = DOT;
+      token.type = DOT;
     } else if (input[i] == ':') {
       token.val = input[i];
       token.type = COLON;
+    } else if (!isalpha(input[i])) {
+      token.val = input[i];
+      token.type = SPECIAL;
     }
     token_stream[i] = token;
   }
 
-  char *types[7] = {
-      "CHAR", "SPACE", "SLASH", "CARRIAGE", "NEWLINE", "DOT", "COLON",
+  char *types[9] = {
+      "CHAR",    "NUM",     "SPACE", "SLASH", "CARRIAGE",
+      "NEWLINE", "SPECIAL", "DOT",   "COLON",
   };
   for (int i = 0; i < strlen(input); i++) {
-    printf("token %d val:%c, type:%s\n", i, token_stream[i].val,
-           types[token_stream[i].type]);
+    printf("%d %c %s\n", i, token_stream[i].val, types[token_stream[i].type]);
   }
 }
 
