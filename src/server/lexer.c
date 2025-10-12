@@ -23,12 +23,24 @@ void tokenize_request_stream(char *input) {
 
   for (int i = 0; i < strlen(input); i++) {
     stream_token_t token;
-    if (input[i] == ' ') {
+    if (isalpha(input[i]) == 0) {
+      token.val = input[i];
+      token.type = CHAR;
+    } else if (input[i] == '\r') {
+      token.val = input[i];
+      token.type = CARRIAGE;
+    } else if (input[i] == '\n') {
+      token.val = input[i];
+      token.type = NEWLINE;
+    } else if (input[i] == ' ') {
       token.val = input[i];
       token.type = SPACE;
     } else if (input[i] == '/') {
       token.val = input[i];
       token.type = SLASH;
+    } else if (input[i] == '.') {
+      token.val = input[i];
+      token.val = DOT;
     } else if (input[i] == ':') {
       token.val = input[i];
       token.type = COLON;
