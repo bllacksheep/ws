@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <stdio.h>
 #include <string.h>
 
 typedef enum {
@@ -19,7 +20,8 @@ typedef struct {
 } stream_token_t;
 
 void tokenize_request_stream(char *input) {
-  stream_token_t token_stream[100] = {0};
+#define MAX 100
+  stream_token_t token_stream[MAX] = {0};
 
   for (int i = 0; i < strlen(input); i++) {
     stream_token_t token;
@@ -45,8 +47,15 @@ void tokenize_request_stream(char *input) {
       token.val = input[i];
       token.type = COLON;
     }
-
     token_stream[i] = token;
+  }
+
+  char *types[7] = {
+      "CHAR", "SPACE", "SLASH", "CARRIAGE", "NEWLINE", "DOT", "COLON",
+  };
+  for (int i = 0; i < strlen(input); i++) {
+    printf("token %d val:%c, type:%s\n", i, token_stream[i].val,
+           types[token_stream[i].type]);
   }
 }
 
