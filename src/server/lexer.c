@@ -25,10 +25,15 @@ typedef struct {
 stream_token_t *tokenize_request_stream(char *input, size_t len) {
 #define MAX 100
 
-  stream_token_t *token_stream =
-      (stream_token_t *)malloc(sizeof(stream_token_t) * MAX);
+  if (len > MAX) {
+    printf("stream too large!\n");
+    exit(1);
+  }
 
-  for (int i = 0; i < len && len < MAX; i++) {
+  stream_token_t *token_stream =
+      (stream_token_t *)malloc(sizeof(stream_token_t) * len);
+
+  for (int i = 0; i < len; i++) {
     stream_token_t token;
     if (isalpha(input[i])) {
       token.val = input[i];
@@ -76,11 +81,17 @@ void reflect(stream_token_t *tokens, size_t len) {
 
 int main() {
 
-  char *req = "GET /chat HTTP/1.1\r\nHost: 127.0.0.1:443\r\nUser-Agent: "
+  char *req = "GET /chat HTTP/1.1\r\nHost: "
+              "127.0.0.1:443\r\nUser-Agent: "
               "curl/7.81.0\r\nAccept: */*\r\n\r\n";
 
   size_t len = strlen(req);
   stream_token_t *stream = tokenize_request_stream(req, len);
+
+  if (!stream) {
+    printf("bad stream, couldn't tokenize\n");
+    exit(1);
+  }
 
   reflect(stream, len);
 }
