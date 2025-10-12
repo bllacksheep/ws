@@ -1,5 +1,6 @@
 #include <ctype.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 typedef enum {
@@ -21,11 +22,11 @@ typedef struct {
   stream_type_t type;
 } stream_token_t;
 
-void tokenize_request_stream(char *input) {
+stream_token_t *tokenize_request_stream(char *input, size_t len) {
 #define MAX 100
-  stream_token_t token_stream[MAX] = {0};
 
-  size_t len = strlen(input);
+  stream_token_t *token_stream =
+      (stream_token_t *)malloc(sizeof(stream_token_t) * MAX);
 
   for (int i = 0; i < len && len < MAX; i++) {
     stream_token_t token;
@@ -59,14 +60,18 @@ void tokenize_request_stream(char *input) {
     }
     token_stream[i] = token;
   }
+  return token_stream;
+}
 
+void reflect(stream_token_t *tokens, size_t len) {
   char *types[9] = {
       "CHAR",    "NUM",     "SPACE", "SLASH", "CARRIAGE",
       "NEWLINE", "SPECIAL", "DOT",   "COLON",
   };
-  for (int i = 0; i < strlen(input); i++) {
-    printf("%s\n", types[token_stream[i].type]);
+  for (int i = 0; i < len; i++) {
+    printf("%s ", types[tokens[i].type]);
   }
+  putchar('\n');
 }
 
 int main() {
@@ -74,5 +79,8 @@ int main() {
   char *req = "GET /chat HTTP/1.1\r\nHost: 127.0.0.1:443\r\nUser-Agent: "
               "curl/7.81.0\r\nAccept: */*\r\n\r\n";
 
-  tokenize_request_stream(req);
+  size_t len = strlen(req);
+  stream_token_t *stream = tokenize_request_stream(req, len);
+
+  reflect(stream, len);
 }
