@@ -22,16 +22,14 @@ typedef struct {
   stream_type_t type;
 } stream_token_t;
 
-stream_token_t *tokenize_request_stream(char *input, size_t len) {
+void tokenize_request_stream(stream_token_t *token_stream, char *input,
+                             size_t len) {
 #define MAX 100
 
   if (len > MAX) {
     printf("stream too large!\n");
     exit(1);
   }
-
-  stream_token_t *token_stream =
-      (stream_token_t *)malloc(sizeof(stream_token_t) * len);
 
   for (int i = 0; i < len; i++) {
     stream_token_t token;
@@ -65,7 +63,6 @@ stream_token_t *tokenize_request_stream(char *input, size_t len) {
     }
     token_stream[i] = token;
   }
-  return token_stream;
 }
 
 void reflect(stream_token_t *tokens, size_t len) {
@@ -86,12 +83,15 @@ int main() {
               "curl/7.81.0\r\nAccept: */*\r\n\r\n";
 
   size_t len = strlen(req);
-  stream_token_t *stream = tokenize_request_stream(req, len);
+  stream_token_t *tstream =
+      (stream_token_t *)malloc(sizeof(stream_token_t) * len);
 
-  if (!stream) {
-    printf("bad stream, couldn't tokenize\n");
+  if (!tstream) {
+    printf("bad stream\n");
     exit(1);
   }
 
-  reflect(stream, len);
+  tokenize_request_stream(tstream, req, len);
+
+  reflect(tstream, len);
 }
