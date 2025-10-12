@@ -25,7 +25,9 @@ void tokenize_request_stream(char *input) {
 #define MAX 100
   stream_token_t token_stream[MAX] = {0};
 
-  for (int i = 0; i < strlen(input); i++) {
+  size_t len = strlen(input);
+
+  for (int i = 0; i < len && len < MAX; i++) {
     stream_token_t token;
     if (isalpha(input[i])) {
       token.val = input[i];
@@ -63,7 +65,7 @@ void tokenize_request_stream(char *input) {
       "NEWLINE", "SPECIAL", "DOT",   "COLON",
   };
   for (int i = 0; i < strlen(input); i++) {
-    printf("%d %c %s\n", i, token_stream[i].val, types[token_stream[i].type]);
+    printf("%s\n", types[token_stream[i].type]);
   }
 }
 
@@ -71,5 +73,6 @@ int main() {
 
   char *req = "GET /chat HTTP/1.1\r\nHost: 127.0.0.1:443\r\nUser-Agent: "
               "curl/7.81.0\r\nAccept: */*\r\n\r\n";
+
   tokenize_request_stream(req);
 }
