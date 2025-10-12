@@ -25,7 +25,7 @@ void tokenize_request_stream(char *input) {
 
   for (int i = 0; i < strlen(input); i++) {
     stream_token_t token;
-    if (isalpha(input[i]) == 0) {
+    if (isalpha(input[i])) {
       token.val = input[i];
       token.type = CHAR;
     } else if (input[i] == '\r') {
