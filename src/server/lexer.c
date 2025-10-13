@@ -15,8 +15,6 @@ typedef enum {
   COLON,
 } stream_type_t;
 
-typedef enum { METHOD, PATH, VERSION, HEADER } http_type_t;
-
 typedef enum {
   IDLE,
   METHOD,
@@ -24,12 +22,36 @@ typedef enum {
   VERSION,
   HEADERS,
   BODY,
+  DONE,
 } state_t;
 
 typedef struct {
   char val;
   stream_type_t type;
 } stream_token_t;
+
+typedef struct {
+  char *val;
+  stream_type_t type;
+} semantic_token_t;
+
+typedef struct {
+  char *headers;
+} headers_t;
+
+typedef struct {
+  char *data;
+} body_t;
+
+typedef struct {
+  state_t state;
+  semantic_token_t method;
+  semantic_token_t path;
+  semantic_token_t version;
+  headers_t headers;
+  unsigned int request_length;
+  body_t body;
+} ctx;
 
 void tokenize_request_stream(stream_token_t *stream, char *input, size_t slen) {
 #define MAX 100
