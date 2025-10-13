@@ -99,6 +99,12 @@ void tokenize_http_request(stream_token_t *stream, size_t count) {
         buf[i++] = token.val;
         state = METHOD_STATE;
       }
+    case METHOD_STATE:
+      if (token.type == CHAR) {
+        buf[i++] = token.val;
+      } else if (token.type == SPACE) {
+        state = PATH_STATE;
+      }
     }
   }
 }
