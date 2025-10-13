@@ -21,7 +21,7 @@ typedef enum {
   VERSION,
   HEADERS,
   BODY,
-} semantic_token_t;
+} semantic_type_t;
 
 typedef struct {
   char val;
@@ -30,8 +30,8 @@ typedef struct {
 
 typedef struct {
   char val[256];
-  semantic_token_t type;
-} http_token_t;
+  semantic_type_t type;
+} semantic_token_t;
 
 typedef struct {
   char *headers;
