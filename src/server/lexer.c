@@ -17,21 +17,29 @@ typedef enum {
 
 typedef enum { METHOD, PATH, VERSION, HEADER } http_type_t;
 
+typedef enum {
+  IDLE,
+  METHOD,
+  PATH,
+  VERSION,
+  HEADERS,
+  BODY,
+} state_t;
+
 typedef struct {
   char val;
   stream_type_t type;
 } stream_token_t;
 
-void tokenize_request_stream(stream_token_t *token_stream, char *input,
-                             size_t len) {
+void tokenize_request_stream(stream_token_t *stream, char *input, size_t slen) {
 #define MAX 100
 
-  if (len > MAX) {
+  if (slen > MAX) {
     printf("stream too large!\n");
     exit(1);
   }
 
-  for (int i = 0; i < len; i++) {
+  for (int i = 0; i < slen; i++) {
     stream_token_t token;
     if (isalpha(input[i])) {
       token.val = input[i];
@@ -61,17 +69,23 @@ void tokenize_request_stream(stream_token_t *token_stream, char *input,
       token.val = input[i];
       token.type = SPECIAL;
     }
-    token_stream[i] = token;
+    stream[i] = token;
   }
 }
 
-void reflect(stream_token_t *tokens, size_t len) {
+void tokenize_http_request(stream_token_t *stream, size_t slen) {
+
+  for (int i = 0; i < slen; i++) {
+  }
+}
+
+void reflect(stream_token_t *stream, size_t slen) {
   char *types[9] = {
       "CHAR",    "NUM",     "SPACE", "SLASH", "CARRIAGE",
       "NEWLINE", "SPECIAL", "DOT",   "COLON",
   };
-  for (int i = 0; i < len; i++) {
-    printf("%s ", types[tokens[i].type]);
+  for (int i = 0; i < slen; i++) {
+    printf("%s ", types[stream[i].type]);
   }
   putchar('\n');
 }
@@ -94,4 +108,6 @@ int main() {
   tokenize_request_stream(tstream, req, len);
 
   reflect(tstream, len);
+
+  tokenize_http_request(tstream, len);
 }
