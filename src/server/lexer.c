@@ -31,8 +31,8 @@ typedef struct {
 } stream_token_t;
 
 typedef struct {
-  char *val;
-  stream_type_t type;
+  char val[256];
+  state_t type;
 } semantic_token_t;
 
 typedef struct {
