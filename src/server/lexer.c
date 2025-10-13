@@ -88,9 +88,18 @@ void tokenize_request_stream(stream_token_t *stream, char *input, size_t slen) {
 void tokenize_http_request(stream_token_t *stream, size_t count) {
   char buf[MAX_BUF] = {0};
 
-  enum { START } state = START;
+  enum { IDLE, METHOD_STATE } state = IDLE;
 
   for (int i = 0; i < count; i++) {
+    stream_token_t token = stream[i];
+
+    switch (state) {
+    case IDLE:
+      if (token.type == CHAR) {
+        buf[i++] = token.val;
+        state = METHOD_STATE;
+      }
+    }
   }
 }
 
