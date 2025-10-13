@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define MAX_BUF 256
+
 typedef enum {
   CHAR,
   NUM,
@@ -29,7 +31,7 @@ typedef struct {
 } stream_token_t;
 
 typedef struct {
-  char val[256];
+  char val[MAX_BUF];
   semantic_type_t type;
 } semantic_token_t;
 
