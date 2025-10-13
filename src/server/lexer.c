@@ -87,7 +87,7 @@ void tokenize_request_stream(stream_token_t *stream, char *input, size_t slen) {
 
 void tokenize_http_request(stream_token_t *stream, size_t count) {
   char buf[MAX_BUF] = {0};
-
+  int idx = 0;
   enum { IDLE, METHOD_STATE, PATH_STATE } state = IDLE;
 
   for (int i = 0; i < count; i++) {
@@ -96,14 +96,15 @@ void tokenize_http_request(stream_token_t *stream, size_t count) {
     switch (state) {
     case IDLE:
       if (token.type == CHAR) {
-        buf[i++] = token.val;
+        buf[idx++] = token.val;
         state = METHOD_STATE;
       }
       break;
     case METHOD_STATE:
       if (token.type == CHAR) {
-        buf[i++] = token.val;
+        buf[idx++] = token.val;
       } else if (token.type == SPACE) {
+        idx = 0;
         state = PATH_STATE;
       }
       break;
