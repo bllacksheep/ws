@@ -43,16 +43,6 @@ typedef struct {
   char *data;
 } body_t;
 
-typedef struct {
-  state_t state;
-  semantic_token_t method;
-  semantic_token_t path;
-  semantic_token_t version;
-  headers_t headers;
-  unsigned int request_length;
-  body_t body;
-} ctx;
-
 void tokenize_request_stream(stream_token_t *stream, char *input, size_t slen) {
 #define MAX 100
 
