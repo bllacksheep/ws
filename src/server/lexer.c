@@ -16,14 +16,12 @@ typedef enum {
 } stream_type_t;
 
 typedef enum {
-  IDLE,
   METHOD,
   PATH,
   VERSION,
   HEADERS,
   BODY,
-  DONE,
-} state_t;
+} semantic_token_t;
 
 typedef struct {
   char val;
@@ -32,8 +30,8 @@ typedef struct {
 
 typedef struct {
   char val[256];
-  state_t type;
-} semantic_token_t;
+  semantic_token_t type;
+} http_token_t;
 
 typedef struct {
   char *headers;
