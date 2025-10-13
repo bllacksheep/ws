@@ -85,17 +85,23 @@ void tokenize_request_stream(stream_token_t *stream, char *input, size_t slen) {
   }
 }
 
-void tokenize_http_request(stream_token_t *stream, size_t count) {
-#define HTTP_SEMANTIC 5
+void tokenize_http_request(stream_token_t *stream, size_t token_count) {
+  enum {
+    IDLE,
+    METHOD_STATE,
+    PATH_STATE,
+    VERSION_STATE,
+    HEADER_STATE,
+    BODY_STATE
+  } state = IDLE;
+
   int idx = 0;
-  enum { IDLE, METHOD_STATE, PATH_STATE } state = IDLE;
-
   semantic_token_t *st =
-      (semantic_token_t *)malloc(sizeof(semantic_token_t) * HTTP_SEMANTIC);
+      (semantic_token_t *)malloc(sizeof(semantic_token_t) * BODY);
 
-  memset(st, 0, sizeof(semantic_token_t) * HTTP_SEMANTIC);
+  memset(st, 0, sizeof(semantic_token_t) * BODY);
 
-  for (int i = 0; i < count; i++) {
+  for (int i = 0; i < token_count; i++) {
     stream_token_t current_token = stream[i];
 
     switch (state) {
@@ -116,16 +122,22 @@ void tokenize_http_request(stream_token_t *stream, size_t count) {
       break;
     case PATH_STATE:
       break;
+    case VERSION_STATE:
+      break;
+    case HEADER_STATE:
+      break;
+    case BODY_STATE:
+      break;
     }
   }
 }
 
-void reflect(stream_token_t *stream, size_t count) {
+void reflect(stream_token_t *stream, size_t token_count) {
   const char *types[9] = {
       "CHAR",    "NUM",     "SPACE", "SLASH", "CARRIAGE",
       "NEWLINE", "SPECIAL", "DOT",   "COLON",
   };
-  for (int i = 0; i < count; i++) {
+  for (int i = 0; i < token_count; i++) {
     printf("%s ", types[stream[i].type]);
   }
   putchar('\n');
