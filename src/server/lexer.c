@@ -121,7 +121,7 @@ void tokenize_http_request(stream_token_t *stream, size_t count) {
 }
 
 void reflect(stream_token_t *stream, size_t count) {
-  char *types[9] = {
+  const char *types[9] = {
       "CHAR",    "NUM",     "SPACE", "SLASH", "CARRIAGE",
       "NEWLINE", "SPECIAL", "DOT",   "COLON",
   };
