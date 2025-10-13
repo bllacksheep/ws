@@ -87,7 +87,6 @@ void tokenize_request_stream(stream_token_t *stream, char *input, size_t slen) {
 
 void tokenize_http_request(stream_token_t *stream, size_t count) {
 #define HTTP_SEMANTIC 5
-  char buf[MAX_BUF] = {0};
   int idx = 0;
   enum { IDLE, METHOD_STATE, PATH_STATE } state = IDLE;
 
@@ -97,23 +96,21 @@ void tokenize_http_request(stream_token_t *stream, size_t count) {
   memset(st, 0, sizeof(semantic_token_t) * HTTP_SEMANTIC);
 
   for (int i = 0; i < count; i++) {
-    stream_token_t token = stream[i];
+    stream_token_t current_token = stream[i];
 
     switch (state) {
     case IDLE:
-      if (token.type == CHAR) {
-        st[1].val[idx++] = token.val;
+      if (current_token.type == CHAR) {
+        st[1].val[idx++] = current_token.val;
         state = METHOD_STATE;
       }
       break;
     case METHOD_STATE:
       st[1].type = METHOD;
-      if (token.type == CHAR) {
-        st[1].val[idx++] = token.val;
-      } else if (token.type == SPACE) {
+      if (current_token.type == CHAR) {
+        st[1].val[idx++] = current_token.val;
+      } else if (current_token.type == SPACE) {
         state = PATH_STATE;
-
-        memset(buf, 0, MAX_BUF);
         idx = 0;
       }
       break;
