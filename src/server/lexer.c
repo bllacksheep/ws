@@ -85,18 +85,21 @@ void tokenize_request_stream(stream_token_t *stream, char *input, size_t slen) {
   }
 }
 
-void tokenize_http_request(stream_token_t *stream, size_t slen) {
+void tokenize_http_request(stream_token_t *stream, size_t count) {
+  char buf[MAX_BUF] = {0};
 
-  for (int i = 0; i < slen; i++) {
+  enum { START } state = START;
+
+  for (int i = 0; i < count; i++) {
   }
 }
 
-void reflect(stream_token_t *stream, size_t slen) {
+void reflect(stream_token_t *stream, size_t count) {
   char *types[9] = {
       "CHAR",    "NUM",     "SPACE", "SLASH", "CARRIAGE",
       "NEWLINE", "SPECIAL", "DOT",   "COLON",
   };
-  for (int i = 0; i < slen; i++) {
+  for (int i = 0; i < count; i++) {
     printf("%s ", types[stream[i].type]);
   }
   putchar('\n');
@@ -108,18 +111,18 @@ int main() {
               "127.0.0.1:443\r\nUser-Agent: "
               "curl/7.81.0\r\nAccept: */*\r\n\r\n";
 
-  size_t len = strlen(req);
+  size_t token_count = strlen(req);
   stream_token_t *tstream =
-      (stream_token_t *)malloc(sizeof(stream_token_t) * len);
+      (stream_token_t *)malloc(sizeof(stream_token_t) * token_count);
 
   if (!tstream) {
     printf("bad stream\n");
     exit(1);
   }
 
-  tokenize_request_stream(tstream, req, len);
+  tokenize_request_stream(tstream, req, token_count);
 
-  reflect(tstream, len);
+  reflect(tstream, token_count);
 
-  tokenize_http_request(tstream, len);
+  tokenize_http_request(tstream, token_count);
 }
