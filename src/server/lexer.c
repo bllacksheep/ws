@@ -97,10 +97,10 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
   } state = IDLE;
 
   int idx = 0;
-  semantic_token_t *st =
+  semantic_token_t *semantic_token =
       (semantic_token_t *)malloc(sizeof(semantic_token_t) * TOKEN_COUNT);
 
-  memset(st, 0, sizeof(semantic_token_t) * TOKEN_COUNT);
+  memset(semantic_token, 0, sizeof(semantic_token_t) * TOKEN_COUNT);
 
   for (int i = 0; i < token_count; i++) {
     stream_token_t current_token = stream[i];
@@ -108,26 +108,45 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
     switch (state) {
     case IDLE:
       if (current_token.type == CHAR) {
-        st[METHOD].val[idx++] = current_token.val;
+        semantic_token[METHOD].val[idx++] = current_token.val;
         state = METHOD_STATE;
       }
       break;
     case METHOD_STATE:
-      st[METHOD].type = METHOD;
+      semantic_token[METHOD].type = METHOD;
       if (current_token.type == CHAR) {
-        st[METHOD].val[idx++] = current_token.val;
+        semantic_token[METHOD].val[idx++] = current_token.val;
       } else if (current_token.type == SPACE) {
         state = PATH_STATE;
+        // reset val writer
         idx = 0;
       }
       break;
     case PATH_STATE:
+      semantic_token[PATH].type = PATH;
+      if (current_token.type == SLASH || current_token.type == CHAR) {
+        semantic_token[PATH].val[idx++] = current_token.val;
+      } else if (current_token.type == SPACE) {
+        state = VERSION_STATE;
+        idx = 0;
+      }
       // to be implemented
       break;
     case VERSION_STATE:
+      semantic_token[VERSION].type = VERSION;
+      if (current_token.type == CHAR || current_token.type == SLASH ||
+          current_token.type == NUM || current_token.type == DOT) {
+        semantic_token[VERSION].val[idx++] = current_token.val;
+      } else if (current_token.type == CARRIAGE &&
+                 stream[i + 1].type == NEWLINE) {
+        state = HEADER_STATE;
+        idx = 0;
+      }
       // to be implemented
       break;
     case HEADER_STATE:
+      // may have to extra i++
+      printf("header state, is_char: %d\n", current_token.type == CHAR);
       // to be implemented
       break;
     case BODY_STATE:
@@ -135,6 +154,12 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
       break;
     }
   }
+  printf("method: %s is_method: %d\n", semantic_token[METHOD].val,
+         semantic_token[METHOD].type == METHOD);
+  printf("path: %s is_path: %d\n", semantic_token[PATH].val,
+         semantic_token[PATH].type == PATH);
+  printf("version: %s is_version: %d\n", semantic_token[VERSION].val,
+         semantic_token[VERSION].type == VERSION);
 }
 
 void reflect(stream_token_t *stream, size_t token_count) {
