@@ -23,6 +23,7 @@ typedef enum {
   VERSION,
   HEADERS,
   BODY,
+  TOKEN_COUNT
 } semantic_type_t;
 
 typedef struct {
@@ -97,9 +98,9 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
 
   int idx = 0;
   semantic_token_t *st =
-      (semantic_token_t *)malloc(sizeof(semantic_token_t) * BODY);
+      (semantic_token_t *)malloc(sizeof(semantic_token_t) * TOKEN_COUNT);
 
-  memset(st, 0, sizeof(semantic_token_t) * BODY);
+  memset(st, 0, sizeof(semantic_token_t) * TOKEN_COUNT);
 
   for (int i = 0; i < token_count; i++) {
     stream_token_t current_token = stream[i];
@@ -107,26 +108,30 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
     switch (state) {
     case IDLE:
       if (current_token.type == CHAR) {
-        st[1].val[idx++] = current_token.val;
+        st[METHOD].val[idx++] = current_token.val;
         state = METHOD_STATE;
       }
       break;
     case METHOD_STATE:
-      st[1].type = METHOD;
+      st[METHOD].type = METHOD;
       if (current_token.type == CHAR) {
-        st[1].val[idx++] = current_token.val;
+        st[METHOD].val[idx++] = current_token.val;
       } else if (current_token.type == SPACE) {
         state = PATH_STATE;
         idx = 0;
       }
       break;
     case PATH_STATE:
+      // to be implemented
       break;
     case VERSION_STATE:
+      // to be implemented
       break;
     case HEADER_STATE:
+      // to be implemented
       break;
     case BODY_STATE:
+      // to be implemented
       break;
     }
   }
