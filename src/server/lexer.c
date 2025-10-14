@@ -130,7 +130,6 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
         state = VERSION_STATE;
         idx = 0;
       }
-      // to be implemented
       break;
     case VERSION_STATE:
       semantic_token[VERSION].type = VERSION;
@@ -142,7 +141,6 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
         state = HEADER_STATE;
         idx = 0;
       }
-      // to be implemented
       break;
     case HEADER_STATE:
       // may have to extra i++
@@ -150,6 +148,7 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
       // to be implemented
       break;
     case BODY_STATE:
+      printf("body state\n");
       // to be implemented
       break;
     }
