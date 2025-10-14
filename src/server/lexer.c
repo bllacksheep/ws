@@ -93,7 +93,9 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
     PATH_STATE,
     VERSION_STATE,
     HEADER_STATE,
-    BODY_STATE
+    BODY_STATE,
+    DONE_STATE,
+    ERROR_STATE,
   } state = IDLE;
 
   int idx = 0;
@@ -143,14 +145,31 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
       }
       break;
     case HEADER_STATE:
-      // may have to extra i++
-      printf("header state, is_char: %d\n", current_token.type == CHAR);
-      // to be implemented
-      break;
-    case BODY_STATE:
-      printf("body state\n");
-      // to be implemented
-      break;
+      semantic_token[HEADERS].type = HEADERS;
+      if (current_token.type == CHAR || current_token.type == COLON ||
+          current_token.type == SPACE || current_token.type == NUM ||
+          current_token.type == DOT) {
+        semantic_token[HEADERS].val[idx++] = current_token.val;
+      } else if (current_token.type == CARRIAGE &&
+                 stream[i + 1].type == NEWLINE &&
+                 stream[i + 2].type == CARRIAGE &&
+                 stream[i + 3].type == NEWLINE) {
+        state = BODY_STATE;
+        idx = 0;
+        break;
+      case BODY_STATE:
+        // a conn can remain in BODY_STATE during chunked transfer
+        semantic_token[BODY].type = BODY;
+        if (current_token.type == CHAR) {
+          semantic_token[BODY].val[idx++] = current_token.val;
+        }
+        // else if bytes read = to read, state = DONE;
+        break;
+      case DONE_STATE:
+        break;
+      default:
+        state = DONE_STATE;
+      }
     }
   }
   printf("method: %s is_method: %d\n", semantic_token[METHOD].val,
@@ -159,6 +178,10 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
          semantic_token[PATH].type == PATH);
   printf("version: %s is_version: %d\n", semantic_token[VERSION].val,
          semantic_token[VERSION].type == VERSION);
+  printf("headers: %s is_headers: %d\n", semantic_token[HEADERS].val,
+         semantic_token[HEADERS].type == HEADERS);
+  printf("body: %s is_body: %d\n", semantic_token[BODY].val,
+         semantic_token[BODY].type == BODY);
 }
 
 void reflect(stream_token_t *stream, size_t token_count) {
