@@ -148,7 +148,8 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
       semantic_token[HEADERS].type = HEADERS;
       if (current_token.type == CHAR || current_token.type == COLON ||
           current_token.type == SPACE || current_token.type == NUM ||
-          current_token.type == DOT) {
+          current_token.type == DOT || current_token.type == SLASH ||
+          current_token.type == SPECIAL) {
         semantic_token[HEADERS].val[idx++] = current_token.val;
       } else if (current_token.type == CARRIAGE &&
                  stream[i + 1].type == NEWLINE &&
@@ -156,20 +157,23 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
                  stream[i + 3].type == NEWLINE) {
         state = BODY_STATE;
         idx = 0;
-        break;
-      case BODY_STATE:
-        // a conn can remain in BODY_STATE during chunked transfer
-        semantic_token[BODY].type = BODY;
-        if (current_token.type == CHAR) {
-          semantic_token[BODY].val[idx++] = current_token.val;
-        }
-        // else if bytes read = to read, state = DONE;
-        break;
-      case DONE_STATE:
-        break;
-      default:
-        state = DONE_STATE;
+      } else if (current_token.type == CARRIAGE &&
+                 stream[i + 1].type == NEWLINE) {
+        semantic_token[HEADERS].val[idx++] = ' ';
       }
+      break;
+    case BODY_STATE:
+      // a conn can remain in BODY_STATE during chunked transfer
+      semantic_token[BODY].type = BODY;
+      if (current_token.type == CHAR) {
+        semantic_token[BODY].val[idx++] = current_token.val;
+      }
+      // else if bytes read = to read, state = DONE;
+      break;
+    case DONE_STATE:
+      break;
+    default:
+      state = DONE_STATE;
     }
   }
   printf("method: %s is_method: %d\n", semantic_token[METHOD].val,
