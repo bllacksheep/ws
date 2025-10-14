@@ -155,6 +155,7 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
                  stream[i + 1].type == NEWLINE &&
                  stream[i + 2].type == CARRIAGE &&
                  stream[i + 3].type == NEWLINE) {
+        // put headers into hash map
         state = BODY_STATE;
         idx = 0;
       } else if (current_token.type == CARRIAGE &&
@@ -163,6 +164,7 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
       }
       break;
     case BODY_STATE:
+      // depends on headers being accessible via hashmap
       // a conn can remain in BODY_STATE during chunked transfer
       semantic_token[BODY].type = BODY;
       if (current_token.type == CHAR) {
