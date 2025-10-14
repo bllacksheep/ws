@@ -168,7 +168,7 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
       if (current_token.type == CHAR) {
         semantic_token[BODY].val[idx++] = current_token.val;
       }
-      // else if bytes read = to read, state = DONE;
+      // else if idx == to be read, state = DONE;
       break;
     case DONE_STATE:
       break;
