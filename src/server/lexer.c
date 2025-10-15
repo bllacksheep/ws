@@ -1,3 +1,4 @@
+#include "hash_table.h"
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -146,6 +147,10 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
       break;
     case HEADER_STATE:
       semantic_token[HEADERS].type = HEADERS;
+
+      header_table_t *hs = new_header_table();
+      free_header_table(hs);
+
       if (current_token.type == CHAR || current_token.type == COLON ||
           current_token.type == SPACE || current_token.type == NUM ||
           current_token.type == DOT || current_token.type == SLASH ||
