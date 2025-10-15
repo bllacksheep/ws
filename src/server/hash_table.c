@@ -10,11 +10,29 @@ static header_t *new_header(const char *k, const char *v) {
 }
 
 header_table_t *new_header_table() {
-  header_table_t *hdrs = malloc(sizeof(header_table_t));
+  header_table_t *header_table = malloc(sizeof(header_table_t));
 
-  hdrs->size = MAX_SUPPORTED_HEADERS;
-  hdrs->count = 0;
-  hdrs->headers = calloc((size_t)hdrs->size, sizeof(header_t *));
+  header_table->size = MAX_SUPPORTED_HEADERS;
+  header_table->count = 0;
+  header_table->headers =
+      calloc((size_t)header_table->size, sizeof(header_t *));
 
-  return hdrs;
+  return header_table;
+}
+
+static void free_header(header_t *h) {
+  free(h->key);
+  free(h->value);
+  free(h);
+}
+
+void free_header_table(header_table_t *header_table) {
+  for (int i = 0; i < header_table->size; i++) {
+    header_t *header = header_table->headers[i];
+    if (header != NULL) {
+      free_header(header);
+    }
+  }
+  free(header_table->headers);
+  free(header_table);
 }
