@@ -168,6 +168,7 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
         int k = 0;
         int v = 0;
 
+        // assumes the correct data is sent
         while (headers[j] != '\0') {
           while (headers[j] != ':') {
             if (k <= MAX_HEADER_BUF)
