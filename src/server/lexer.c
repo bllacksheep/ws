@@ -99,6 +99,8 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
     ERROR_STATE,
   } state = IDLE;
 
+  enum { MAX_HEADER_BUF = 256 };
+
   int idx = 0;
   semantic_token_t *semantic_token =
       (semantic_token_t *)malloc(sizeof(semantic_token_t) * TOKEN_COUNT);
@@ -148,19 +150,6 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
     case HEADER_STATE:
       semantic_token[HEADERS].type = HEADERS;
 
-      /*    allow parse out of headers as semantic token
-       *    helps handle \r\n and \r\n\r\
-       *    check not invalid CHAR or ERROR
-       *
-       *    use semantic token of headers space delimited to:
-       *    check not COLON gets key
-       *
-       *    add k,v to hash table
-       *
-       *    add header token (hash table)
-       *
-       * */
-
       // ensure no invalid tokens before COLON
       if (current_token.type == CHAR || current_token.type == COLON ||
           current_token.type == SPACE || current_token.type == NUM ||
@@ -171,15 +160,14 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
                  stream[i + 1].type == NEWLINE &&
                  stream[i + 2].type == CARRIAGE &&
                  stream[i + 3].type == NEWLINE) {
-
-        char key[50] = {0};
-        char val[50] = {0};
+#define MAX_HEADER_KEY 256
+#define MAX_HEADER_VAL 256
+        char key[MAX_HEADER_KEY] = {0};
+        char val[MAX_HEADER_VAL] = {0};
         char *headers = semantic_token[HEADERS].val;
         int j = 0; // overall pos in headers
         int k = 0;
         int v = 0;
-
-        printf("%s\n", headers);
 
         while (headers[j] != '\0') {
           while (headers[j] != ':') {
@@ -199,8 +187,8 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
 
           printf("k: %s, v: %s\n", key, val);
 
-          memset(key, 0, 50);
-          memset(val, 0, 50);
+          memset(key, 0, MAX_HEADER_KEY);
+          memset(val, 0, MAX_HEADER_VAL);
           v = k = 0;
         }
 
