@@ -160,10 +160,9 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
                  stream[i + 1].type == NEWLINE &&
                  stream[i + 2].type == CARRIAGE &&
                  stream[i + 3].type == NEWLINE) {
-#define MAX_HEADER_KEY 256
-#define MAX_HEADER_VAL 256
-        char key[MAX_HEADER_KEY] = {0};
-        char val[MAX_HEADER_VAL] = {0};
+
+        char key[MAX_HEADER_BUF] = {0};
+        char val[MAX_HEADER_BUF] = {0};
         char *headers = semantic_token[HEADERS].val;
         int j = 0; // overall pos in headers
         int k = 0;
@@ -187,8 +186,8 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
 
           printf("k: %s, v: %s\n", key, val);
 
-          memset(key, 0, MAX_HEADER_KEY);
-          memset(val, 0, MAX_HEADER_VAL);
+          memset(key, 0, MAX_HEADER_BUF);
+          memset(val, 0, MAX_HEADER_BUF);
           v = k = 0;
         }
 
