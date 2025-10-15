@@ -170,14 +170,16 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
 
         while (headers[j] != '\0') {
           while (headers[j] != ':') {
-            key[k++] = headers[j++];
+            if (k <= MAX_HEADER_BUF)
+              key[k++] = headers[j++];
           }
           // skip :<sp>
           if (headers[j] == ':') {
             j += 2;
           }
           while (headers[j] != ' ' && headers[j] != '\0') {
-            val[v++] = headers[j++];
+            if (k <= MAX_HEADER_BUF)
+              val[v++] = headers[j++];
           }
           // skip <sp>
           if (headers[j] == ' ') {
