@@ -148,9 +148,20 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
     case HEADER_STATE:
       semantic_token[HEADERS].type = HEADERS;
 
-      header_table_t *hs = new_header_table();
-      free_header_table(hs);
+      /*    allow parse out of headers as semantic token
+       *    helps handle \r\n and \r\n\r\
+       *    check not invalid CHAR or ERROR
+       *
+       *    use semantic token of headers space delimited to:
+       *    check not COLON gets key
+       *
+       *    add k,v to hash table
+       *
+       *    add header token (hash table)
+       *
+       * */
 
+      // ensure no invalid tokens before COLON
       if (current_token.type == CHAR || current_token.type == COLON ||
           current_token.type == SPACE || current_token.type == NUM ||
           current_token.type == DOT || current_token.type == SLASH ||
@@ -160,13 +171,45 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
                  stream[i + 1].type == NEWLINE &&
                  stream[i + 2].type == CARRIAGE &&
                  stream[i + 3].type == NEWLINE) {
-        // put headers into hash map
+
+        char key[50] = {0};
+        char val[50] = {0};
+        char *headers = semantic_token[HEADERS].val;
+        int j = 0; // overall pos in headers
+        int k = 0;
+        int v = 0;
+
+        printf("%s\n", headers);
+
+        while (headers[j] != '\0') {
+          while (headers[j] != ':') {
+            key[k++] = headers[j++];
+          }
+          // skip :<sp>
+          j += 2;
+          while (headers[j] != ' ' && headers[j] != '\0') {
+            val[v++] = headers[j++];
+          }
+          // skip <sp>
+          j++;
+
+          printf("k: %s, v: %s\n", key, val);
+
+          memset(key, 0, 50);
+          memset(val, 0, 50);
+          v = k = 0;
+        }
+
+        header_table_t *hs = new_header_table();
+        free_header_table(hs);
+
         state = BODY_STATE;
         idx = 0;
       } else if (current_token.type == CARRIAGE &&
                  stream[i + 1].type == NEWLINE) {
         semantic_token[HEADERS].val[idx++] = ' ';
       }
+
       break;
     case BODY_STATE:
       // depends on headers being accessible via hashmap
