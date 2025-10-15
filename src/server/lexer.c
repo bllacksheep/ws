@@ -186,12 +186,16 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
             key[k++] = headers[j++];
           }
           // skip :<sp>
-          j += 2;
+          if (headers[j] == ':') {
+            j += 2;
+          }
           while (headers[j] != ' ' && headers[j] != '\0') {
             val[v++] = headers[j++];
           }
           // skip <sp>
-          j++;
+          if (headers[j] == ' ') {
+            j++;
+          }
 
           printf("k: %s, v: %s\n", key, val);
 
