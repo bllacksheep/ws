@@ -13,7 +13,7 @@ static header_t *new_header(const char *k, const char *v) {
 header_table_t *new_header_table() {
   header_table_t *header_table = malloc(sizeof(header_table_t));
 
-  header_table->size = MAX_WEBSOCKET_HEADERS;
+  header_table->size = MAX_HASH_TABLE;
   header_table->count = 0;
   header_table->headers =
       calloc((size_t)header_table->size, sizeof(header_t *));

@@ -1,4 +1,4 @@
-#define MAX_WEBSOCKET_HEADERS 5
+#define MAX_HASH_TABLE 100
 
 typedef struct {
   char *key;
