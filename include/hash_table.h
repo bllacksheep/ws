@@ -1,4 +1,4 @@
-#define MAX_SUPPORTED_HEADERS 5
+#define MAX_WEBSOCKET_HEADERS 5
 
 typedef struct {
   char *key;
@@ -15,3 +15,4 @@ header_table_t *new_header_table();
 static header_t *new_header(const char *, const char *);
 static void free_header(header_t *);
 void free_header_table(header_table_t *);
+int ht_hash(const char *, const int, const int);

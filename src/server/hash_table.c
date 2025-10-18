@@ -1,6 +1,7 @@
 #include "hash_table.h"
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 static header_t *new_header(const char *k, const char *v) {
   header_t *hdr = malloc(sizeof(header_t));
@@ -12,7 +13,7 @@ static header_t *new_header(const char *k, const char *v) {
 header_table_t *new_header_table() {
   header_table_t *header_table = malloc(sizeof(header_table_t));
 
-  header_table->size = MAX_SUPPORTED_HEADERS;
+  header_table->size = MAX_WEBSOCKET_HEADERS;
   header_table->count = 0;
   header_table->headers =
       calloc((size_t)header_table->size, sizeof(header_t *));
@@ -36,3 +37,14 @@ void free_header_table(header_table_t *header_table) {
   free(header_table->headers);
   free(header_table);
 }
+
+int ht_hash(const char *s, const int a, const int m) {
+    long hash = 0;
+    const int len_s = strlen(s);
+    for (int i = 0; i < len_s; i++) {
+        hash += (long)pow(a, len_s - (i+1)) * s[i];
+        hash = hash % m;
+    }
+    return (int)hash;
+}
+
