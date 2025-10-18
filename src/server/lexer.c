@@ -245,9 +245,16 @@ void reflect(stream_token_t *stream, size_t token_count) {
 
 int main() {
 
-  char *req = "GET /chat HTTP/1.1\r\nHost: "
-              "127.0.0.1:443\r\nUser-Agent: "
-              "curl/7.81.0\r\nAccept: */*\r\n\r\n";
+  // char *req = "GET /chat HTTP/1.1\r\nHost: "
+  //             "127.0.0.1:443\r\nUser-Agent: "
+  //             "curl/7.81.0\r\nAccept: */*\r\n\r\n";
+
+  char *req = "GET /chat HTTP/1.1\r\n"
+              "Host: example.com:8000\r\n"
+              "Upgrade: websocket\r\n"
+              "Connection: Upgrade\r\n"
+              "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+              "Sec-WebSocket-Version: 13\r\n\r\n";
 
   size_t token_count = strlen(req);
   stream_token_t *tstream =
