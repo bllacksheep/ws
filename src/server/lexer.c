@@ -245,10 +245,7 @@ void reflect(stream_token_t *stream, size_t token_count) {
 
 int main() {
 
-  // char *req = "GET /chat HTTP/1.1\r\nHost: "
-  //             "127.0.0.1:443\r\nUser-Agent: "
-  //             "curl/7.81.0\r\nAccept: */*\r\n\r\n";
-
+  // example: https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_servers#client_handshake_request
   char *req = "GET /chat HTTP/1.1\r\n"
               "Host: example.com:8000\r\n"
               "Upgrade: websocket\r\n"
