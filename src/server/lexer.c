@@ -5,8 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_BUF 256
-
 typedef enum {
   CHAR,
   NUM,
@@ -34,7 +32,7 @@ typedef struct {
 } stream_token_t;
 
 typedef struct {
-  char val[MAX_BUF];
+  char val[MAX_SEMANTIC_TOKEN_BUF_SIZE];
   semantic_type_t type;
 } semantic_token_t;
 
@@ -47,9 +45,8 @@ typedef struct {
 } body_t;
 
 void tokenize_request_stream(stream_token_t *stream, char *input, size_t slen) {
-#define MAX 256
 
-  if (slen > MAX) {
+  if (slen > MAX_INCOMING_STREAM_SIZE) {
     printf("stream too large!\n");
     exit(1);
   }
@@ -100,13 +97,16 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
     ERROR_STATE,
   } state = IDLE;
 
-  enum { MAX_HEADER_BUF = HEADER_BUF_SIZE };
+  // enum needed to set array size
+  enum { MAX_HEADER_BUF = MAX_HEADER_BUF_SIZE };
 
   int idx = 0;
   semantic_token_t *semantic_token =
       (semantic_token_t *)malloc(sizeof(semantic_token_t) * TOKEN_COUNT);
 
   memset(semantic_token, 0, sizeof(semantic_token_t) * TOKEN_COUNT);
+
+  ht_hash_table *ht = ht_new();
 
   for (int i = 0; i < token_count; i++) {
     stream_token_t current_token = stream[i];
@@ -168,8 +168,6 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
         int j = 0; // overall pos in headers
         int k = 0;
         int v = 0;
-
-        ht_hash_table *ht = ht_new();
 
         // assumes the correct data is sent
         while (headers[j] != '\0') {
