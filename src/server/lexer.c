@@ -187,15 +187,15 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
             j++;
           }
 
-          printf("k: %s, i: %d, v: %s\n", key, ht_get_hash(key, MAX_HASH_TABLE, 0), val);
+          // printf("k: %s, i: %d, v: %s\n", key, ht_get_hash(key, HT_MAX_SIZE, 0), val);
 
           memset(key, 0, MAX_HEADER_BUF);
           memset(val, 0, MAX_HEADER_BUF);
           v = k = 0;
         }
 
-        header_table_t *hs = new_header_table();
-        free_header_table(hs);
+        ht_hash_table *ht = ht_new();
+        ht_del_hash_table(ht);
 
         state = BODY_STATE;
         idx = 0;

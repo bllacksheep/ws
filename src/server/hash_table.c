@@ -3,39 +3,39 @@
 #include <string.h>
 #include <math.h>
 
-static header_t *new_header(const char *k, const char *v) {
-  header_t *hdr = malloc(sizeof(header_t));
-  hdr->key = strdup(k);
-  hdr->value = strdup(v);
-  return hdr;
+static ht_item *ht_new_item(const char *k, const char *v) {
+  ht_item *i = malloc(sizeof(ht_item));
+  i->key = strdup(k);
+  i->value = strdup(v);
+  return i;
 }
 
-header_table_t *new_header_table() {
-  header_table_t *header_table = malloc(sizeof(header_table_t));
+ht_hash_table *ht_new() {
+  ht_hash_table *ht = malloc(sizeof(ht_hash_table));
 
-  header_table->size = MAX_HASH_TABLE;
-  header_table->count = 0;
-  header_table->headers =
-      calloc((size_t)header_table->size, sizeof(header_t *));
+  ht->size = HT_MAX_SIZE;
+  ht->count = 0;
+  ht->items =
+      calloc((size_t)ht->size, sizeof(ht_item *));
 
-  return header_table;
+  return ht;
 }
 
-static void free_header(header_t *h) {
-  free(h->key);
-  free(h->value);
-  free(h);
+static void ht_del_item(ht_item *i) {
+  free(i->key);
+  free(i->value);
+  free(i);
 }
 
-void free_header_table(header_table_t *header_table) {
-  for (int i = 0; i < header_table->size; i++) {
-    header_t *header = header_table->headers[i];
-    if (header != NULL) {
-      free_header(header);
+void ht_del_hash_table(ht_hash_table *ht) {
+  for (int i = 0; i < ht->size; i++) {
+    ht_item *item = ht->items[i];
+    if (item != NULL) {
+      ht_del_item(item);
     }
   }
-  free(header_table->headers);
-  free(header_table);
+  free(ht->items);
+  free(ht);
 }
 
 static int ht_hash(const char *s, const int a, const int m) {
@@ -48,12 +48,10 @@ static int ht_hash(const char *s, const int a, const int m) {
     return (int)hash;
 }
 
-int ht_get_hash(const char* s, const int num_buckets, const int attempt) {
+static int ht_get_hash(const char* s, const int num_buckets, const int attempt) {
     const int hash_a = ht_hash(s, HT_PRIME_1, num_buckets);
     const int hash_b = ht_hash(s, HT_PRIME_2, num_buckets);
     return (hash_a + (attempt * (hash_b + 1))) % num_buckets;
 }
 
-
-
-
+// void ht_insert(ht_hash_table *ht)
