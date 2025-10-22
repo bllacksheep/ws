@@ -46,7 +46,7 @@ typedef struct {
 } body_t;
 
 void tokenize_request_stream(stream_token_t *stream, char *input, size_t slen) {
-#define MAX 256 
+#define MAX 256
 
   if (slen > MAX) {
     printf("stream too large!\n");
@@ -168,6 +168,8 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
         int k = 0;
         int v = 0;
 
+        ht_hash_table *ht = ht_new();
+
         // assumes the correct data is sent
         while (headers[j] != '\0') {
           while (headers[j] != ':') {
@@ -187,15 +189,17 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
             j++;
           }
 
-          // printf("k: %s, i: %d, v: %s\n", key, ht_get_hash(key, HT_MAX_SIZE, 0), val);
+          // printf("k: %s, i: %d, v: %s\n", key, ht_get_hash(key, HT_MAX_SIZE,
+          // 0), val);
+
+          ht_insert(ht, key, val);
 
           memset(key, 0, MAX_HEADER_BUF);
           memset(val, 0, MAX_HEADER_BUF);
           v = k = 0;
         }
 
-        ht_hash_table *ht = ht_new();
-        ht_del_hash_table(ht);
+        // ht_del_hash_table(ht);
 
         state = BODY_STATE;
         idx = 0;
@@ -245,7 +249,8 @@ void reflect(stream_token_t *stream, size_t token_count) {
 
 int main() {
 
-  // example: https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_servers#client_handshake_request
+  // example:
+  // https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_servers#client_handshake_request
   char *req = "GET /chat HTTP/1.1\r\n"
               "Host: example.com:8000\r\n"
               "Upgrade: websocket\r\n"

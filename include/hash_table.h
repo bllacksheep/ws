@@ -19,4 +19,5 @@ static ht_item *ht_new_item(const char *, const char *);
 static void ht_del_item(ht_item *);
 void ht_del_hash_table(ht_hash_table *);
 static int ht_hash(const char *, const int, const int);
-static int ht_get_hash(const char*, const int, const int);
+static int ht_get_hash(const char *, const int, const int);
+void ht_insert(ht_hash_table *, const char *, const char *);
