@@ -1,3 +1,4 @@
+#include "lexer.h"
 #include "hash_table.h"
 #include <ctype.h>
 #include <stdio.h>
@@ -99,7 +100,7 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
     ERROR_STATE,
   } state = IDLE;
 
-  enum { MAX_HEADER_BUF = 256 };
+  enum { MAX_HEADER_BUF = HEADER_BUF_SIZE };
 
   int idx = 0;
   semantic_token_t *semantic_token =
