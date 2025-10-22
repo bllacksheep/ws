@@ -1,4 +1,7 @@
-#define MAX_HASH_TABLE 100
+// adapted from https://github.com/jamesroutley/write-a-hash-table/
+#define MAX_HASH_TABLE 20
+#define HT_PRIME_1 151
+#define HT_PRIME_2 157
 
 typedef struct {
   char *key;
@@ -15,4 +18,5 @@ header_table_t *new_header_table();
 static header_t *new_header(const char *, const char *);
 static void free_header(header_t *);
 void free_header_table(header_table_t *);
-int ht_hash(const char *, const int, const int);
+static int ht_hash(const char *, const int, const int);
+int ht_get_hash(const char*, const int, const int);

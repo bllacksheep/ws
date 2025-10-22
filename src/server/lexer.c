@@ -187,7 +187,7 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
             j++;
           }
 
-          printf("k: %s, i: %d, v: %s\n", key, ht_hash(key, 151, MAX_HASH_TABLE), val);
+          printf("k: %s, i: %d, v: %s\n", key, ht_get_hash(key, MAX_HASH_TABLE, 0), val);
 
           memset(key, 0, MAX_HEADER_BUF);
           memset(val, 0, MAX_HEADER_BUF);
