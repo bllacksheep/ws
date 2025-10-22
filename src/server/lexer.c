@@ -189,9 +189,6 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
             j++;
           }
 
-          // printf("k: %s, i: %d, v: %s\n", key, ht_get_hash(key, HT_MAX_SIZE,
-          // 0), val);
-
           ht_insert(ht, key, val);
 
           memset(key, 0, MAX_HEADER_BUF);

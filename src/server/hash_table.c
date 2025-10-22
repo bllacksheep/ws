@@ -1,5 +1,6 @@
 #include "hash_table.h"
 #include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -66,4 +67,5 @@ void ht_insert(ht_hash_table *ht, const char *key, const char *value) {
   }
   ht->items[index] = item;
   ht->count++;
+  printf("k: %s, i: %d, v: %s\n", key, index, value);
 }
