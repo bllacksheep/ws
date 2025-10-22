@@ -46,7 +46,7 @@ typedef struct {
 } body_t;
 
 void tokenize_request_stream(stream_token_t *stream, char *input, size_t slen) {
-#define MAX 256
+#define MAX 256 
 
   if (slen > MAX) {
     printf("stream too large!\n");
