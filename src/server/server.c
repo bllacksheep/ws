@@ -13,6 +13,7 @@
 #include <unistd.h>
 // clean these up check bin size
 
+// handle conn is not a loop and it needs to be
 unsigned int handle_conn(unsigned int cfd, unsigned int epfd) {
   char req[MAX_REQ_SIZE + 1] = {0};
   // non-blocking, so should read MAX_REQ_SIZE
