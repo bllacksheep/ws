@@ -1,6 +1,6 @@
-#include "ws-server.h"
 #include "http.h"
 #include "ip.h"
+#include "ws-server.h"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -13,6 +13,7 @@
 #include <unistd.h>
 // clean these up check bin size
 
+// handle conn is not a loop and it needs to be
 unsigned int handle_conn(unsigned int cfd, unsigned int epfd) {
   char req[MAX_REQ_SIZE + 1] = {0};
   // non-blocking, so should read MAX_REQ_SIZE
@@ -20,6 +21,7 @@ unsigned int handle_conn(unsigned int cfd, unsigned int epfd) {
   ssize_t bytes_read = read(cfd, req, MAX_REQ_SIZE);
 
   // 0 EOF == tcp CLOSE_WAIT
+  // TODO: if 0 clean up allocated resources
   if (bytes_read == 0) {
     fprintf(stdout, "info: client closed connection: %d\n", cfd);
     if (epoll_ctl(epfd, EPOLL_CTL_DEL, cfd, NULL) == -1) {
@@ -28,11 +30,23 @@ unsigned int handle_conn(unsigned int cfd, unsigned int epfd) {
     }
     if (close(cfd) == -1) {
       fprintf(stderr, "error: close on fd: %d %s\n", cfd, strerror(errno));
+      return -1;
     }
     return 0;
   } else if (bytes_read == -1) {
     fprintf(stderr, "error: reading from fd: %d\n", cfd);
+    return -1;
   } else {
+
+    /*
+     * read get's you a byte steam
+     * make sense of byte steam tokenize handle error states early here
+     * validate the lexed content with parsing handle error states here
+     *
+     * http validation (supporting small subset)
+     * use the parsed input to build a context or return error
+     * */
+
     const char *resp = handle_req(req, bytes_read);
 
     // partial write handling to be implemented

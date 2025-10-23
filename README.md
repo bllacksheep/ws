@@ -21,3 +21,10 @@ bench
 set ~/siege/siege.conf "connection = keep-alive"
 siege -c1 -r10 http://localhost:443/chat
 ```
+##todo
+- implement fsm parser for http
+- implement request context pattern
+- implement chunked data tracking
+- implement websocket stream handling
+- test setup and stream with browser client
+- build my own client after ensuring server works

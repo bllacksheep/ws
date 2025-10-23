@@ -1,28 +1,27 @@
+CC = gcc
+CFLAGS = -Iinclude -g
 LDFLAGS = -lcriterion
+LDLIBS = -lm
+
+SRC = src/server
+OBJ = build/server.o build/http.o build/ip.o build/lexer.o build/hash_table.o
 
 all: server_db test
 
+server_db: bin/server
+
+bin/server: $(OBJ)
+	$(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
+
+build/%.o: $(SRC)/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
 testtest: tests/smoke.c
-	gcc tests/smoke.c -o bin/smoke $(LDFLAGS)
+	$(CC) $(CFLAGS) -c tests/smoke.c -o build/smoke.o
+	$(CC) build/smoke.o -o bin/smoke $(LDFLAGS)
 
 test: testtest
 	./bin/smoke
 
-server_db: bin/server
-
-bin/server: build/ws-server.o build/http.o build/ip.o
-	gcc -g $(LDFLAGS) -o bin/server build/ws-server.o build/http.o build/ip.o
-
-build/ws-server.o: src/server/ws-server.c
-	gcc -Iinclude -g -c src/server/ws-server.c -o build/ws-server.o
-
-build/http.o: src/server/http.c
-	gcc -Iinclude -g -c src/server/http.c -o build/http.o
-
-build/ip.o: src/server/ip.c
-	gcc -Iinclude -g -c src/server/ip.c -o build/ip.o
-
 clean:
 	rm -f build/*.o bin/server bin/smoke
-
-
