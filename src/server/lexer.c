@@ -243,29 +243,30 @@ void reflect(stream_token_t *stream, size_t token_count) {
   putchar('\n');
 }
 
-int main() {
-
-  // example:
-  // https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_servers#client_handshake_request
-  char *req = "GET /chat HTTP/1.1\r\n"
-              "Host: example.com:8000\r\n"
-              "Upgrade: websocket\r\n"
-              "Connection: Upgrade\r\n"
-              "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
-              "Sec-WebSocket-Version: 13\r\n\r\n";
-
-  size_t token_count = strlen(req);
-  stream_token_t *tstream =
-      (stream_token_t *)malloc(sizeof(stream_token_t) * token_count);
-
-  if (!tstream) {
-    printf("bad stream\n");
-    exit(1);
-  }
-
-  tokenize_request_stream(tstream, req, token_count);
-
-  reflect(tstream, token_count);
-
-  tokenize_http_request(tstream, token_count);
-}
+// int main() {
+//
+//   // example:
+//   //
+//   https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_servers#client_handshake_request
+//   char *req = "GET /chat HTTP/1.1\r\n"
+//               "Host: example.com:8000\r\n"
+//               "Upgrade: websocket\r\n"
+//               "Connection: Upgrade\r\n"
+//               "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+//               "Sec-WebSocket-Version: 13\r\n\r\n";
+//
+//   size_t token_count = strlen(req);
+//   stream_token_t *tstream =
+//       (stream_token_t *)malloc(sizeof(stream_token_t) * token_count);
+//
+//   if (!tstream) {
+//     printf("bad stream\n");
+//     exit(1);
+//   }
+//
+//   tokenize_request_stream(tstream, req, token_count);
+//
+//   reflect(tstream, token_count);
+//
+//   tokenize_http_request(tstream, token_count);
+// }

@@ -21,6 +21,7 @@ unsigned int handle_conn(unsigned int cfd, unsigned int epfd) {
 
   // 0 EOF == tcp CLOSE_WAIT
   // TODO: handle this back in server code
+  // TODO: handle early returns and exits
   if (bytes_read == 0) {
     fprintf(stdout, "info: client closed connection: %d\n", cfd);
     if (epoll_ctl(epfd, EPOLL_CTL_DEL, cfd, NULL) == -1) {
@@ -30,10 +31,21 @@ unsigned int handle_conn(unsigned int cfd, unsigned int epfd) {
     if (close(cfd) == -1) {
       fprintf(stderr, "error: close on fd: %d %s\n", cfd, strerror(errno));
     }
-    return 0;
+    return -1;
   } else if (bytes_read == -1) {
     fprintf(stderr, "error: reading from fd: %d\n", cfd);
+    return -1;
   } else {
+
+    /*
+     * read get's you a byte steam
+     * make sense of byte steam tokenize handle error states early here
+     * validate the lexed content with parsing handle error states here
+     *
+     * http validation (supporting small subset)
+     * use the parsed input to build a context or return error
+     * */
+
     const char *resp = handle_req(req, bytes_read);
 
     // partial write handling to be implemented
