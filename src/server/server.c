@@ -30,8 +30,9 @@ unsigned int handle_conn(unsigned int cfd, unsigned int epfd) {
     }
     if (close(cfd) == -1) {
       fprintf(stderr, "error: close on fd: %d %s\n", cfd, strerror(errno));
+      return -1;
     }
-    return -1;
+    return 0;
   } else if (bytes_read == -1) {
     fprintf(stderr, "error: reading from fd: %d\n", cfd);
     return -1;
