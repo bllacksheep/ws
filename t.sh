@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-curl -i -N \
+curl -v -i -N \
   -H "Host: 127.0.0.1:443" \
   -H "Upgrade: websocket" \
   -H "Connection: Upgrade" \
