@@ -4,7 +4,7 @@ LDFLAGS = -lcriterion
 LDLIBS = -lm
 
 SRC = src/server
-OBJ = build/server.o build/http.o build/ip.o build/lexer.o build/hash_table.o
+OBJ = build/server.o build/http.o build/ip.o build/parser.o build/hash_table.o
 
 all: server_db test
 
