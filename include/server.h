@@ -9,7 +9,7 @@
 #define MAX_EVENTS 10
 #define PORT 443
 #define MAX_BYTE_STREAM_IN 256
-#define CONN_MANAGER_CONN_POOL 50
+#define CONN_MANAGER_CONN_POOL 5
 
 typedef struct {
   int fd;
@@ -22,14 +22,13 @@ typedef struct {
   size_t cap;
 } conn_manager_t;
 
-conn_manager_t *conn_tracker();
+conn_manager_t *connection_manager_create();
 
-conn_manager_t *conn_tracker() {
+conn_manager_t *connection_manager_create() {
   conn_manager_t *cm = (conn_manager_t *)malloc(sizeof(conn_manager_t));
   if (cm == NULL) {
     // handle
   }
-
   // initial capacity
   cm->conn =
       (conn_ctx_t **)malloc(sizeof(conn_ctx_t *) * CONN_MANAGER_CONN_POOL);
@@ -39,24 +38,25 @@ conn_manager_t *conn_tracker() {
   return cm;
 }
 
-void add_conn(conn_manager_t *cm, int cfd);
+// tracks connection
+void connection_manager_add(conn_manager_t *cm, int cfd);
 
-void add_conn(conn_manager_t *cm, int cfd) {
+void connection_manager_add(conn_manager_t *cm, int cfd) {
   if (cm->len >= cm->cap / 2) {
     cm->cap *= 2;
-    cm->conn = (conn_ctx_t *)realloc(cm->conn, sizeof(conn_ctx_t) * cm->cap);
+    cm->conn = (conn_ctx_t **)realloc(cm->conn, sizeof(conn_ctx_t *) * cm->cap);
   }
-
   conn_ctx_t *conn = (conn_ctx_t *)malloc(sizeof(conn_ctx_t));
   if (conn != NULL) {
     memset(conn, 0, sizeof(conn_ctx_t));
   }
   conn->fd = cfd;
-
   cm->conn[cfd] = conn;
 }
 
-void kill_conn(conn_manager_t *cm, int cfd);
-conn_ctx_t *track_conn(conn_manager_t *cm, int cfd);
+// releases connection
+void connection_manager_remove(conn_manager_t *cm, int cfd);
+// fetches connection
+conn_ctx_t *connection_manager_get(conn_manager_t *cm, int cfd);
 
 #endif
