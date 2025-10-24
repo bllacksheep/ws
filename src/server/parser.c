@@ -232,17 +232,6 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
          semantic_token[BODY].type == BODY);
 }
 
-void reflect(stream_token_t *stream, size_t token_count) {
-  const char *types[9] = {
-      "CHAR",    "NUM",     "SPACE", "SLASH", "CARRIAGE",
-      "NEWLINE", "SPECIAL", "DOT",   "COLON",
-  };
-  for (int i = 0; i < token_count; i++) {
-    printf("%s ", types[stream[i].type]);
-  }
-  putchar('\n');
-}
-
 // int main() {
 //
 //   // example:
