@@ -123,7 +123,8 @@ const char *_200_ok = "HTTP/1.1 200 OK\r\n"
                       "Content-Length: 0\r\n\r\n";
 
 // handler returning response string
-const char *handle_req(const char *raw_req_buf, int raw_buf_len) {
+const char *handle_http_request_stream(const char *raw_req_buf,
+                                       int raw_buf_len) {
   if (raw_req_buf == NULL || raw_buf_len >= MAX_REQ_SIZE) {
     return NULL;
   }
