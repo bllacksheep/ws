@@ -1,5 +1,6 @@
 // rfc 6455
 #include <stdlib.h>
+#include <string.h>
 
 #ifndef _WS_SERVER_h
 #define _WS_SERVER_h
@@ -8,6 +9,7 @@
 #define MAX_EVENTS 10
 #define PORT 443
 #define MAX_BYTE_STREAM_IN 256
+#define CONN_MANAGER_CONN_POOL 50
 
 typedef struct {
   int fd;
@@ -15,9 +17,46 @@ typedef struct {
 } conn_ctx_t;
 
 typedef struct {
-  conn_ctx_t *conn;
+  conn_ctx_t **conn;
   size_t len;
   size_t cap;
-} connection_manager_t;
+} conn_manager_t;
+
+conn_manager_t *conn_tracker();
+
+conn_manager_t *conn_tracker() {
+  conn_manager_t *cm = (conn_manager_t *)malloc(sizeof(conn_manager_t));
+  if (cm == NULL) {
+    // handle
+  }
+
+  // initial capacity
+  cm->conn =
+      (conn_ctx_t **)malloc(sizeof(conn_ctx_t *) * CONN_MANAGER_CONN_POOL);
+
+  cm->len = 0;
+  cm->cap = CONN_MANAGER_CONN_POOL;
+  return cm;
+}
+
+void add_conn(conn_manager_t *cm, int cfd);
+
+void add_conn(conn_manager_t *cm, int cfd) {
+  if (cm->len >= cm->cap / 2) {
+    cm->cap *= 2;
+    cm->conn = (conn_ctx_t *)realloc(cm->conn, sizeof(conn_ctx_t) * cm->cap);
+  }
+
+  conn_ctx_t *conn = (conn_ctx_t *)malloc(sizeof(conn_ctx_t));
+  if (conn != NULL) {
+    memset(conn, 0, sizeof(conn_ctx_t));
+  }
+  conn->fd = cfd;
+
+  cm->conn[cfd] = conn;
+}
+
+void kill_conn(conn_manager_t *cm, int cfd);
+conn_ctx_t *track_conn(conn_manager_t *cm, int cfd);
 
 #endif
