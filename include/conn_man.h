@@ -21,7 +21,9 @@ typedef struct {
 
 conn_manager_t *connection_manager_create();
 // tracks connection
-void connection_manager_add(conn_manager_t *cm, int cfd);
+static void connection_manager_add(conn_manager_t *cm, int cfd);
+// check state of conn add / remove as required
+void connection_manager_track(conn_manager_t *cm, int cfd);
 // releases connection
 void connection_manager_remove(conn_manager_t *cm, int cfd);
 // fetches connection

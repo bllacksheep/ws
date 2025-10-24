@@ -14,7 +14,7 @@ conn_manager_t *connection_manager_create() {
   return cm;
 }
 
-void connection_manager_add(conn_manager_t *cm, int cfd) {
+static void connection_manager_add(conn_manager_t *cm, int cfd) {
   if (cm->len >= cm->cap / 2) {
     cm->cap *= 2;
     cm->conn = (conn_ctx_t **)realloc(cm->conn, sizeof(conn_ctx_t *) * cm->cap);
@@ -26,6 +26,11 @@ void connection_manager_add(conn_manager_t *cm, int cfd) {
   conn->fd = cfd;
   cm->conn[cfd] = conn;
   cm->len++;
+}
+
+void connection_manager_track(conn_manager_t *cm, int cfd) {
+  // check the conn and it's status
+  connection_manager_add(cm, cfd);
 }
 
 // releases connection

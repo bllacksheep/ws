@@ -226,7 +226,7 @@ int main(int argc, char *argv[]) {
           return 1;
         }
 
-        connection_manager_add(conn_mgr, cfd);
+        connection_manager_track(conn_mgr, cfd);
 
         for (int i = 5; i < conn_mgr->cap; i++) {
           if (conn_mgr->conn[i] != NULL) {
