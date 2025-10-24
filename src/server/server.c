@@ -228,9 +228,11 @@ int main(int argc, char *argv[]) {
 
         connection_manager_add(conn_mgr, cfd);
 
-        for (int i = 0; i < conn_mgr->len; i++) {
-          printf("fd: %d, buf: %s\n", conn_mgr->conn[i]->fd,
-                 conn_mgr->conn[i]->buf);
+        for (int i = 5; i < conn_mgr->cap; i++) {
+          if (conn_mgr->conn[i] != NULL) {
+            printf("fd: %d, buf: %s\n", conn_mgr->conn[i]->fd,
+                   conn_mgr->conn[i]->buf);
+          }
         }
 
         ev.events = EPOLLIN; //| EPOLLET;
