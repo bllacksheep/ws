@@ -230,8 +230,8 @@ int main(int argc, char *argv[]) {
 
         for (int i = 5; i < conn_mgr->cap; i++) {
           if (conn_mgr->conn[i] != NULL) {
-            printf("fd: %d, buf: %s\n", conn_mgr->conn[i]->fd,
-                   conn_mgr->conn[i]->buf);
+            printf("fd: %d, buf: %s, ds cap: %zu\n", conn_mgr->conn[i]->fd,
+                   conn_mgr->conn[i]->buf, conn_mgr->cap);
           }
         }
 
