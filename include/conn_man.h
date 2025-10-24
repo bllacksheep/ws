@@ -6,7 +6,7 @@
 #define _CONN_MAN_h
 
 #define MAX_BYTE_STREAM_IN 256
-#define CONN_MANAGER_CONN_POOL 5
+#define CONN_MANAGER_CONN_POOL 10
 
 typedef struct {
   int fd;

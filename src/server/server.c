@@ -187,6 +187,11 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  conn_manager_t *conn_mgr = connection_manager_create();
+  if (conn_mgr == NULL) {
+    // handle
+  }
+
   for (;;) {
     if ((nfds = epoll_wait(efd, events, MAX_EVENTS, 0)) == -1) {
       fprintf(stderr, "error: epoll_wait %s\n", strerror(errno));
@@ -219,6 +224,13 @@ int main(int argc, char *argv[]) {
                     strerror(errno));
           }
           return 1;
+        }
+
+        connection_manager_add(conn_mgr, cfd);
+
+        for (int i = 0; i < conn_mgr->len; i++) {
+          printf("fd: %d, buf: %s\n", conn_mgr->conn[i]->fd,
+                 conn_mgr->conn[i]->buf);
         }
 
         ev.events = EPOLLIN; //| EPOLLET;

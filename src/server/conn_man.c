@@ -25,6 +25,7 @@ void connection_manager_add(conn_manager_t *cm, int cfd) {
   }
   conn->fd = cfd;
   cm->conn[cfd] = conn;
+  cm->len++;
 }
 
 // releases connection
