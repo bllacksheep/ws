@@ -1,6 +1,6 @@
+#include "server.h"
 #include "http.h"
 #include "ip.h"
-#include "ws-server.h"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
