@@ -15,10 +15,10 @@
 
 // handle conn is not a loop and it needs to be
 unsigned int handle_conn(unsigned int cfd, unsigned int epfd) {
-  char req[MAX_REQ_SIZE + 1] = {0};
+  char http_request_stream[MAX_REQ_SIZE + 1] = {0};
   // non-blocking, so should read MAX_REQ_SIZE
   // if data then can't be read until next event
-  ssize_t bytes_read = read(cfd, req, MAX_REQ_SIZE);
+  ssize_t bytes_read = read(cfd, http_request_stream, MAX_REQ_SIZE);
 
   // 0 EOF == tcp CLOSE_WAIT
   // TODO: if 0 clean up allocated resources
@@ -47,12 +47,17 @@ unsigned int handle_conn(unsigned int cfd, unsigned int epfd) {
      * use the parsed input to build a context or return error
      * */
 
-    const char *resp = handle_req(req, bytes_read);
+    // assign context to connection
+    const char *http_response_stream =
+        handle_http_request_stream(http_request_stream, bytes_read);
+
+    // const char *http_response_stream =
+    //     handle_http_request_stream(http_request_stream, bytes_read);
 
     // partial write handling to be implemented
-    size_t n = strlen(resp);
+    size_t n = strlen(http_response_stream);
     if (n > 0) {
-      ssize_t bytes_written = write(cfd, resp, n);
+      ssize_t bytes_written = write(cfd, http_response_stream, n);
       if (bytes_written == -1) {
         fprintf(stderr, "error: write failed on fd: %d, %s\n", cfd,
                 strerror(errno));
