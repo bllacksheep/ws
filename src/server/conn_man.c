@@ -20,6 +20,22 @@ static void connection_manager_add(conn_manager_t *cm, int cfd) {
     // run in its own thread
     // run cleanup on pool
     // need connection state to be present
+
+    /*
+     * responsed means it's done, but keep-alive by default
+     * close means it can be removed
+     * higher level http status means nothing unless close set
+     * so persistent connections can't be cleaned up if still 'managed'
+     * meaning realloc is likely unaviodable
+     * timeout will have to be set in order to balance performance
+     * add idle / stale to conn_ctx_t
+     * i.e. persistent but inactive
+     * 30s inactive timeout
+     *
+     *
+     * allocating by cfd index is not efficent at scale.... fuck
+     *
+     */
   }
   // if (cm->len >= cm->cap / 2) {
   //   cm->cap *= 2;
