@@ -15,11 +15,12 @@
 // clean these up check bin size
 
 // handle conn is not a loop and it needs to be
-unsigned int handle_conn(unsigned int cfd, unsigned int epfd) {
-  char http_request_stream[MAX_REQ_SIZE + 1] = {0};
+unsigned int handle_conn(conn_manager_t *cm, unsigned int cfd,
+                         unsigned int epfd) {
+  // char http_request_stream[MAX_REQ_SIZE + 1] = {0};
   // non-blocking, so should read MAX_REQ_SIZE
   // if data then can't be read until next event
-  ssize_t bytes_read = read(cfd, http_request_stream, MAX_REQ_SIZE);
+  ssize_t bytes_read = read(cfd, cm->conn[cfd]->buf, MAX_REQ_SIZE);
 
   // 0 EOF == tcp CLOSE_WAIT
   // TODO: if 0 clean up allocated resources
@@ -50,7 +51,7 @@ unsigned int handle_conn(unsigned int cfd, unsigned int epfd) {
 
     // assign context to connection
     const char *http_response_stream =
-        handle_http_request_stream(http_request_stream, bytes_read);
+        handle_http_request_stream(cm->conn[cfd]->buf, bytes_read);
 
     // const char *http_response_stream =
     //     handle_http_request_stream(http_request_stream, bytes_read);
@@ -193,7 +194,7 @@ int main(int argc, char *argv[]) {
   }
 
   for (;;) {
-    if ((nfds = epoll_wait(efd, events, MAX_EVENTS, 0)) == -1) {
+    if ((nfds = epoll_wait(efd, events, MAX_EVENTS, -1)) == -1) {
       fprintf(stderr, "error: epoll_wait %s\n", strerror(errno));
       if (close(sfd) == -1) {
         fprintf(stderr, "error: close on fd: %d %s\n", cfd, strerror(errno));
@@ -242,7 +243,7 @@ int main(int argc, char *argv[]) {
           fprintf(stderr, "error: epoll add cfd to instance list failed %s\n",
                   strerror(errno));
         }
-      } else if (handle_conn(events[n].data.fd, efd) == -1) {
+      } else if (handle_conn(conn_mgr, events[n].data.fd, efd) == -1) {
         fprintf(stderr, "error: handle connection error %s\n", strerror(errno));
       }
       // else break?
