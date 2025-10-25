@@ -11,21 +11,30 @@ conn_manager_t *connection_manager_create() {
 
   cm->len = 0;
   cm->cap = CONN_MANAGER_CONN_POOL;
+  cm->allocated = 0;
   return cm;
 }
 
 static void connection_manager_add(conn_manager_t *cm, int cfd) {
-  if (cm->len >= cm->cap / 2) {
-    cm->cap *= 2;
-    cm->conn = (conn_ctx_t **)realloc(cm->conn, sizeof(conn_ctx_t *) * cm->cap);
+  if (cm->allocated >= CONN_MANAGER_DEALLOC_THRESHOLD) {
+    // run in its own thread
+    // run cleanup on pool
+    // need connection state to be present
   }
+  // if (cm->len >= cm->cap / 2) {
+  //   cm->cap *= 2;
+  //   cm->conn = (conn_ctx_t **)realloc(cm->conn, sizeof(conn_ctx_t *) *
+  //   cm->cap);
+  // }
   conn_ctx_t *conn = (conn_ctx_t *)malloc(sizeof(conn_ctx_t));
   if (conn != NULL) {
     memset(conn, 0, sizeof(conn_ctx_t));
   }
   conn->fd = cfd;
+  conn->reuse = CONN_KEEP_ALIVE;
   cm->conn[cfd] = conn;
   cm->len++;
+  cm->allocated++;
 }
 
 void connection_manager_track(conn_manager_t *cm, int cfd) {
