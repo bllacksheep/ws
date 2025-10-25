@@ -9,6 +9,13 @@ conn_manager_t *connection_manager_create() {
   cm->conn =
       (conn_ctx_t **)malloc(sizeof(conn_ctx_t *) * CONN_MANAGER_CONN_POOL);
 
+  for (int i = 0; i < CONN_MANAGER_CONN_POOL; i++) {
+    conn_ctx_t *conn = (conn_ctx_t *)malloc(sizeof(conn_ctx_t));
+    if (conn != NULL) {
+      memset(conn, 0, sizeof(conn_ctx_t));
+    }
+    cm->conn[i] = conn;
+  }
   cm->len = 0;
   cm->cap = CONN_MANAGER_CONN_POOL;
   cm->allocated = 0;
@@ -42,13 +49,11 @@ static void connection_manager_add(conn_manager_t *cm, int cfd) {
   //   cm->conn = (conn_ctx_t **)realloc(cm->conn, sizeof(conn_ctx_t *) *
   //   cm->cap);
   // }
-  conn_ctx_t *conn = (conn_ctx_t *)malloc(sizeof(conn_ctx_t));
-  if (conn != NULL) {
-    memset(conn, 0, sizeof(conn_ctx_t));
-  }
-  conn->fd = cfd;
-  conn->reuse = CONN_KEEP_ALIVE;
-  cm->conn[cfd] = conn;
+
+  //   memset(conn, 0, sizeof(conn_ctx_t));
+  // }
+  cm->conn[cfd]->fd = cfd;
+  cm->conn[cfd]->reuse = CONN_KEEP_ALIVE;
   cm->len++;
   cm->allocated++;
 }

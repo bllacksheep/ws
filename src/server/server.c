@@ -97,6 +97,11 @@ int main(int argc, char *argv[]) {
   char *address;
   in_port_t port;
 
+  conn_manager_t *conn_mgr = connection_manager_create();
+  if (conn_mgr == NULL) {
+    // handle
+  }
+
 #define DEFAULT INADDR_LOOPBACK
 
   // bin/server 127.0.0.1 8080
@@ -187,11 +192,6 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  conn_manager_t *conn_mgr = connection_manager_create();
-  if (conn_mgr == NULL) {
-    // handle
-  }
-
   for (;;) {
     if ((nfds = epoll_wait(efd, events, MAX_EVENTS, 0)) == -1) {
       fprintf(stderr, "error: epoll_wait %s\n", strerror(errno));
@@ -227,13 +227,13 @@ int main(int argc, char *argv[]) {
         }
 
         connection_manager_track(conn_mgr, cfd);
-
-        for (int i = 5; i < conn_mgr->cap; i++) {
-          if (conn_mgr->conn[i] != NULL) {
-            printf("fd: %d, buf: %s, ds cap: %zu\n", conn_mgr->conn[i]->fd,
-                   conn_mgr->conn[i]->buf, conn_mgr->cap);
-          }
-        }
+        //
+        // for (int i = 5; i < conn_mgr->cap; i++) {
+        //   if (conn_mgr->conn[i] != NULL) {
+        //     printf("fd: %d, buf: %s, ds cap: %zu\n", conn_mgr->conn[i]->fd,
+        //            conn_mgr->conn[i]->buf, conn_mgr->cap);
+        //   }
+        // }
 
         ev.events = EPOLLIN; //| EPOLLET;
         ev.data.fd = cfd;
@@ -245,6 +245,7 @@ int main(int argc, char *argv[]) {
       } else if (handle_conn(events[n].data.fd, efd) == -1) {
         fprintf(stderr, "error: handle connection error %s\n", strerror(errno));
       }
+      // else break?
     }
   }
 
