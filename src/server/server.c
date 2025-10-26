@@ -3,6 +3,7 @@
 #include "http.h"
 #include "ip.h"
 #include <arpa/inet.h>
+#include <asm-generic/errno.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <netinet/ip.h>
@@ -20,11 +21,12 @@ unsigned int handle_conn(conn_manager_t *cm, unsigned int cfd,
   // char http_request_stream[MAX_REQ_SIZE + 1] = {0};
   // non-blocking, so should read MAX_REQ_SIZE
   // if data then can't be read until next event
+  int x = 1;
   ssize_t bytes_read = read(cfd, cm->conn[cfd]->buf, MAX_REQ_SIZE);
 
-  // 0 EOF == tcp CLOSE_WAIT
   // TODO: if 0 clean up allocated resources
   if (bytes_read == 0) {
+    // 0 EOF == tcp CLOSE_WAIT
     fprintf(stdout, "info: client closed connection: %d\n", cfd);
     if (epoll_ctl(epfd, EPOLL_CTL_DEL, cfd, NULL) == -1) {
       fprintf(stderr, "error: remove fd from interest list: %d %s\n", cfd,
@@ -35,8 +37,9 @@ unsigned int handle_conn(conn_manager_t *cm, unsigned int cfd,
       return -1;
     }
     return 0;
+
   } else if (bytes_read == -1) {
-    fprintf(stderr, "error: reading from fd: %d\n", cfd);
+    fprintf(stderr, "error: reading from fd: %d, %s\n", cfd, strerror(errno));
     return -1;
   } else {
 
@@ -196,14 +199,21 @@ int main(int argc, char *argv[]) {
   for (;;) {
     if ((nfds = epoll_wait(efd, events, MAX_EVENTS, -1)) == -1) {
       fprintf(stderr, "error: epoll_wait %s\n", strerror(errno));
+
+      if (errno == EINTR)
+        continue;
+
       if (close(sfd) == -1) {
-        fprintf(stderr, "error: close on fd: %d %s\n", cfd, strerror(errno));
+        fprintf(stderr, "error: close on server fd: %d %s\n", cfd,
+                strerror(errno));
       }
       if (close(efd) == -1) {
-        fprintf(stderr, "error: close on fd: %d %s\n", cfd, strerror(errno));
+        fprintf(stderr, "error: close on epoll fd: %d %s\n", cfd,
+                strerror(errno));
       }
       return 1;
     }
+    printf("------------ nfds: %d\n", nfds);
 
     for (int n = 0; n < nfds; n++) {
       if (events[n].data.fd == sfd) {
