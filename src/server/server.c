@@ -99,21 +99,25 @@ int connection_error(int fd, int epfd) {
             strerror(errno));
     return -1;
   }
-  if (err != 0) {
-    if (err == ECONNRESET) {
-      if (epoll_ctl(epfd, EPOLL_CTL_DEL, fd, NULL) == -1) {
-        fprintf(stderr, "error: removing stale fd from interest list: %d %s\n",
-                fd, strerror(errno));
-        return -1;
-      }
-      if (close(fd) == -1) {
-        fprintf(stderr, "error: close on fd: %d %s\n", fd, strerror(errno));
-        return -1;
-      }
-    } else {
-      fprintf(stderr, "error: unhandled connection error %d %s\n", fd,
-              strerror(errno));
+  if (err == ECONNRESET) {
+    printf("Connection reset by peer\n");
+    if (epoll_ctl(epfd, EPOLL_CTL_DEL, fd, NULL) == -1) {
+      fprintf(stderr, "error: removing stale fd from interest list: %d %s\n",
+              fd, strerror(errno));
+      return -1;
     }
+    if (close(fd) == -1) {
+      fprintf(stderr, "error: close on fd: %d %s\n", fd, strerror(errno));
+      return -1;
+    }
+    return -1;
+  } else if (err != 0) {
+    fprintf(stderr, "error: unknown socket error %d %s\n", fd, strerror(errno));
+    if (close(fd) == -1) {
+      fprintf(stderr, "error: close on fd: %d %s\n", fd, strerror(errno));
+      return -1;
+    }
+    return -1;
   }
   return 0;
 }
