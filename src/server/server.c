@@ -16,14 +16,14 @@
 // clean these up check bin size
 
 // handle conn is not a loop and it needs to be
-unsigned int handle_conn(conn_manager_t *cm, unsigned int cfd,
-                         unsigned int epfd) {
+void handle_conn(conn_manager_t *cm, unsigned int cfd, unsigned int epfd) {
+  printf("entered handle_conn: fd %d\n", cfd);
   // char http_request_stream[MAX_REQ_SIZE + 1] = {0};
   // non-blocking, so should read MAX_REQ_SIZE
   // if data then can't be read until next event
   int x = 1;
   ssize_t bytes_read = read(cfd, cm->conn[cfd]->buf, MAX_REQ_SIZE);
-
+  printf("bytes read: %zd: fd %d\n", bytes_read, cfd);
   // TODO: if 0 clean up allocated resources
   if (bytes_read == 0) {
     // 0 EOF == tcp CLOSE_WAIT
@@ -34,13 +34,13 @@ unsigned int handle_conn(conn_manager_t *cm, unsigned int cfd,
     }
     if (close(cfd) == -1) {
       fprintf(stderr, "error: close on fd: %d %s\n", cfd, strerror(errno));
-      return -1;
+      return;
     }
-    return 0;
+    return;
 
   } else if (bytes_read == -1) {
     fprintf(stderr, "error: reading from fd: %d, %s\n", cfd, strerror(errno));
-    return -1;
+    return;
   } else {
 
     /*
@@ -66,16 +66,16 @@ unsigned int handle_conn(conn_manager_t *cm, unsigned int cfd,
       if (bytes_written == -1) {
         fprintf(stderr, "error: write failed on fd: %d, %s\n", cfd,
                 strerror(errno));
-        return -1;
+        return;
       }
       if (bytes_written != (ssize_t)n) {
         fprintf(stderr, "error: partial write on fd: %d, %s\n", cfd,
                 strerror(errno));
-        return -1;
+        return;
       }
     }
   }
-  return 0;
+  return;
 }
 
 int setnonblocking(unsigned int fd) {
@@ -86,6 +86,33 @@ int setnonblocking(unsigned int fd) {
       fprintf(stderr, "error: fnctl setting O_NONBLOCK on fd %d %s\n", fd,
               strerror(errno));
       return -1;
+    }
+  }
+  return 0;
+}
+
+int connection_error(int fd, int epfd) {
+  int err = 0;
+  socklen_t len = sizeof(err);
+  if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &len) == -1) {
+    fprintf(stderr, "error: getting socket opts, fd: %d %s\n", fd,
+            strerror(errno));
+    return -1;
+  }
+  if (err != 0) {
+    if (err == ECONNRESET) {
+      if (epoll_ctl(epfd, EPOLL_CTL_DEL, fd, NULL) == -1) {
+        fprintf(stderr, "error: removing stale fd from interest list: %d %s\n",
+                fd, strerror(errno));
+        return -1;
+      }
+      if (close(fd) == -1) {
+        fprintf(stderr, "error: close on fd: %d %s\n", fd, strerror(errno));
+        return -1;
+      }
+    } else {
+      fprintf(stderr, "error: unhandled connection error %d %s\n", fd,
+              strerror(errno));
     }
   }
   return 0;
@@ -200,6 +227,7 @@ int main(int argc, char *argv[]) {
     if ((nfds = epoll_wait(efd, events, MAX_EVENTS, -1)) == -1) {
       fprintf(stderr, "error: epoll_wait %s\n", strerror(errno));
 
+      // strace causes EINTR on epoll_wait
       if (errno == EINTR)
         continue;
 
@@ -213,19 +241,22 @@ int main(int argc, char *argv[]) {
       }
       return 1;
     }
-    printf("------------ nfds: %d\n", nfds);
+    printf("------------ nfds: %d max %d\n", nfds, MAX_EVENTS);
 
     for (int n = 0; n < nfds; n++) {
       if (events[n].data.fd == sfd) {
         // deque backlog as client socket
         if ((cfd = accept(sfd, (struct sockaddr *)&client, &cl)) >= 0) {
-          fprintf(stdout, "connection accepted on fd: %d\n", cfd);
+          fprintf(stdout, "client connection accepted on fd: %d\n", cfd);
         } else {
-          fprintf(stderr, "error: accept on: %d, %s\n", cfd, strerror(errno));
+          fprintf(stderr, "error: client accept on: %d, %s\n", cfd,
+                  strerror(errno));
         }
 
-        // need accept4 to set SOCK_NONBLOCK
+        // need accept4() to set SOCK_NONBLOCK flag
         if (setnonblocking(cfd) == -1) {
+          fprintf(stderr, "error: setting SOCK_NONBLOCK on fd: %d %s\n", cfd,
+                  strerror(errno));
           if (close(sfd) == -1) {
             fprintf(stderr, "error: close on fd: %d %s\n", cfd,
                     strerror(errno));
@@ -246,17 +277,16 @@ int main(int argc, char *argv[]) {
         //   }
         // }
 
-        ev.events = EPOLLIN; //| EPOLLET;
+        ev.events = EPOLLIN | EPOLLERR; //| EPOLLET;
         ev.data.fd = cfd;
 
         if (epoll_ctl(efd, EPOLL_CTL_ADD, cfd, &ev) == -1) {
           fprintf(stderr, "error: epoll add cfd to instance list failed %s\n",
                   strerror(errno));
         }
-      } else if (handle_conn(conn_mgr, events[n].data.fd, efd) == -1) {
-        fprintf(stderr, "error: handle connection error %s\n", strerror(errno));
+      } else if (connection_error(events[n].data.fd, efd) != -1) {
+        handle_conn(conn_mgr, events[n].data.fd, efd);
       }
-      // else break?
     }
   }
 
