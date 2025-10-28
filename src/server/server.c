@@ -6,6 +6,7 @@
 #include <asm-generic/errno.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <netinet/in.h>
 #include <netinet/ip.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -139,9 +140,50 @@ void server_shutdown(int server_fd, int epoll_fd) {
   }
 }
 
+void drain_accept_queue(int server_fd, int server_epoll_fd,
+                        struct epoll_event event,
+                        conn_manager_t *connection_manager,
+                        struct sockaddr_in client_addr,
+                        socklen_t *client_addr_len) {
+
+  // deque backlog as client socket
+  int cfd;
+  if ((cfd = accept(server_fd, (struct sockaddr *)&client_addr,
+                    client_addr_len)) >= 0) {
+    // fprintf(stdout, "client connection accepted on fd: %d\n", cfd);
+  } else {
+    fprintf(stderr, "error: client accept on: %d, %s\n", cfd, strerror(errno));
+  }
+
+  // need accept4() to set SOCK_NONBLOCK flag
+  if (setnonblocking(cfd) == -1) {
+    fprintf(stderr, "error: setting SOCK_NONBLOCK on fd: %d %s\n", cfd,
+            strerror(errno));
+    server_shutdown(server_fd, server_epoll_fd);
+    // potentially some form of exit
+  }
+
+  connection_manager_track(connection_manager, cfd);
+  //
+  // for (int i = 5; i < conn_mgr->cap; i++) {
+  //   if (conn_mgr->conn[i] != NULL) {
+  //     printf("fd: %d, buf: %s, ds cap: %zu\n", conn_mgr->conn[i]->fd,
+  //            conn_mgr->conn[i]->buf, conn_mgr->cap);
+  //   }
+  // }
+
+  event.events = EPOLLIN | EPOLLERR; //| EPOLLET;
+  event.data.fd = cfd;
+
+  if (epoll_ctl(server_epoll_fd, EPOLL_CTL_ADD, cfd, &event) == -1) {
+    fprintf(stderr, "error: epoll add cfd to instance list failed %s\n",
+            strerror(errno));
+  }
+}
+
 int main(int argc, char *argv[]) {
 
-  unsigned int sfd, cfd, efd, nfds;
+  unsigned int sfd, cfd, sefd, cefd, nfds;
   struct sockaddr_in server;
   struct sockaddr_in client;
   struct in_addr ip;
@@ -209,9 +251,9 @@ int main(int argc, char *argv[]) {
   socklen_t cl = sizeof(client);
   struct epoll_event ev, events[MAX_EVENTS];
 
-  if ((efd = epoll_create1(0)) == -1) {
+  if ((sefd = epoll_create1(0)) == -1) {
     fprintf(stderr, "error: createine epoll instance %s\n", strerror(errno));
-    server_shutdown(sfd, efd);
+    server_shutdown(sfd, sefd);
     return 1;
   }
 
@@ -219,64 +261,30 @@ int main(int argc, char *argv[]) {
   ev.events = EPOLLIN;
   ev.data.fd = sfd;
 
-  if (epoll_ctl(efd, EPOLL_CTL_ADD, sfd, &ev) == -1) {
+  if (epoll_ctl(sefd, EPOLL_CTL_ADD, sfd, &ev) == -1) {
     fprintf(stderr, "error: epoll add sfd to instance list failed %s\n",
             strerror(errno));
-    server_shutdown(sfd, efd);
+    server_shutdown(sfd, sefd);
     return 1;
   }
 
   for (;;) {
-    if ((nfds = epoll_wait(efd, events, MAX_EVENTS, -1)) == -1) {
+    if ((nfds = epoll_wait(sefd, events, MAX_EVENTS, -1)) == -1) {
       fprintf(stderr, "error: epoll_wait %s\n", strerror(errno));
 
       // strace causes EINTR on epoll_wait
       if (errno == EINTR)
         continue;
 
-      server_shutdown(sfd, efd);
+      server_shutdown(sfd, sefd);
       return 1;
     }
 
-    // printf("------------ nfds: %d max %d\n", nfds, MAX_EVENTS);
-
     for (int n = 0; n < nfds; n++) {
       if (events[n].data.fd == sfd) {
-
-        // deque backlog as client socket
-        if ((cfd = accept(sfd, (struct sockaddr *)&client, &cl)) >= 0) {
-          // fprintf(stdout, "client connection accepted on fd: %d\n", cfd);
-        } else {
-          fprintf(stderr, "error: client accept on: %d, %s\n", cfd,
-                  strerror(errno));
-        }
-
-        // need accept4() to set SOCK_NONBLOCK flag
-        if (setnonblocking(cfd) == -1) {
-          fprintf(stderr, "error: setting SOCK_NONBLOCK on fd: %d %s\n", cfd,
-                  strerror(errno));
-          server_shutdown(sfd, efd);
-          return 1;
-        }
-
-        connection_manager_track(conn_mgr, cfd);
-        //
-        // for (int i = 5; i < conn_mgr->cap; i++) {
-        //   if (conn_mgr->conn[i] != NULL) {
-        //     printf("fd: %d, buf: %s, ds cap: %zu\n", conn_mgr->conn[i]->fd,
-        //            conn_mgr->conn[i]->buf, conn_mgr->cap);
-        //   }
-        // }
-
-        ev.events = EPOLLIN | EPOLLERR; //| EPOLLET;
-        ev.data.fd = cfd;
-
-        if (epoll_ctl(efd, EPOLL_CTL_ADD, cfd, &ev) == -1) {
-          fprintf(stderr, "error: epoll add cfd to instance list failed %s\n",
-                  strerror(errno));
-        }
-      } else if (!connection_error(events[n].data.fd, efd)) {
-        handle_conn(conn_mgr, events[n].data.fd, efd);
+        drain_accept_queue(sfd, sefd, ev, conn_mgr, client, &cl);
+      } else if (!connection_error(events[n].data.fd, sefd)) {
+        handle_conn(conn_mgr, events[n].data.fd, sefd);
       }
     }
   }
