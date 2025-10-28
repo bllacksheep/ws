@@ -17,17 +17,20 @@
 
 // handle conn is not a loop and it needs to be
 void handle_conn(conn_manager_t *cm, unsigned int cfd, unsigned int epfd) {
-  printf("entered handle_conn: fd %d\n", cfd);
+  // printf("entered handle_conn: fd %d\n", cfd);
+
   // char http_request_stream[MAX_REQ_SIZE + 1] = {0};
   // non-blocking, so should read MAX_REQ_SIZE
   // if data then can't be read until next event
   int x = 1;
   ssize_t bytes_read = read(cfd, cm->conn[cfd]->buf, MAX_REQ_SIZE);
-  printf("bytes read: %zd: fd %d\n", bytes_read, cfd);
+
+  // printf("bytes read: %zd: fd %d\n", bytes_read, cfd);
+
   // TODO: if 0 clean up allocated resources
   if (bytes_read == 0) {
     // 0 EOF == tcp CLOSE_WAIT
-    fprintf(stdout, "info: client closed connection: %d\n", cfd);
+    // fprintf(stdout, "info: client closed connection: %d\n", cfd);
     if (epoll_ctl(epfd, EPOLL_CTL_DEL, cfd, NULL) == -1) {
       fprintf(stderr, "error: remove fd from interest list: %d %s\n", cfd,
               strerror(errno));
@@ -100,7 +103,9 @@ int connection_error(int fd, int epfd) {
     return -1;
   }
   if (err == ECONNRESET) {
-    printf("Connection reset by peer\n");
+
+    // printf("Connection reset by peer\n");
+
     if (epoll_ctl(epfd, EPOLL_CTL_DEL, fd, NULL) == -1) {
       fprintf(stderr, "error: removing stale fd from interest list: %d %s\n",
               fd, strerror(errno));
@@ -120,6 +125,17 @@ int connection_error(int fd, int epfd) {
     return -1;
   }
   return 0;
+}
+
+void server_shutdown(int server_fd, int epoll_fd) {
+    if (close(server_fd) == -1) {
+      fprintf(stderr, "error: close on server fd: %d %s\n", server_fd, strerror(errno));
+    }
+    if (epoll_fd > 0) {
+    if (close(epoll_fd) == -1) {
+      fprintf(stderr, "error: close on epoll fd: %d %s\n", epoll_fd, strerror(errno));
+    }
+    }
 }
 
 int main(int argc, char *argv[]) {
@@ -165,10 +181,7 @@ int main(int argc, char *argv[]) {
   int opt = 1;
   if (setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
     fprintf(stderr, "error: setting sockopts %s\n", strerror(errno));
-
-    if (close(sfd) == -1) {
-      fprintf(stderr, "error: close on fd: %d %s\n", cfd, strerror(errno));
-    }
+    server_shutdown(sfd, 0);
     return 1;
   }
 
@@ -180,17 +193,13 @@ int main(int argc, char *argv[]) {
 
   if (bind(sfd, (struct sockaddr *)&server, sizeof(server)) == -1) {
     fprintf(stderr, "bind error: %s\n", strerror(errno));
-    if (close(sfd) == -1) {
-      fprintf(stderr, "error: close on fd: %d %s\n", cfd, strerror(errno));
-    }
+    server_shutdown(sfd, 0);
     return 1;
   }
 
   if (listen(sfd, LISTEN_BACKLOG) == -1) {
     fprintf(stderr, "listen error: %s\n", strerror(errno));
-    if (close(sfd) == -1) {
-      fprintf(stderr, "error: close on fd: %d %s\n", cfd, strerror(errno));
-    }
+    server_shutdown(sfd, 0);
     return 1;
   }
 
@@ -203,27 +212,18 @@ int main(int argc, char *argv[]) {
 
   if ((efd = epoll_create1(0)) == -1) {
     fprintf(stderr, "error: createine epoll instance %s\n", strerror(errno));
-    if (close(sfd) == -1) {
-      fprintf(stderr, "error: close on fd: %d %s\n", cfd, strerror(errno));
-    }
-    if (close(efd) == -1) {
-      fprintf(stderr, "error: close on fd: %d %s\n", cfd, strerror(errno));
-    }
+    server_shutdown(sfd, efd);
     return 1;
   }
 
+  // not handling errors yet
   ev.events = EPOLLIN;
   ev.data.fd = sfd;
 
   if (epoll_ctl(efd, EPOLL_CTL_ADD, sfd, &ev) == -1) {
     fprintf(stderr, "error: epoll add sfd to instance list failed %s\n",
             strerror(errno));
-    if (close(sfd) == -1) {
-      fprintf(stderr, "error: close on fd: %d %s\n", cfd, strerror(errno));
-    }
-    if (close(efd) == -1) {
-      fprintf(stderr, "error: close on fd: %d %s\n", cfd, strerror(errno));
-    }
+    server_shutdown(sfd, efd);
     return 1;
   }
 
@@ -235,23 +235,19 @@ int main(int argc, char *argv[]) {
       if (errno == EINTR)
         continue;
 
-      if (close(sfd) == -1) {
-        fprintf(stderr, "error: close on server fd: %d %s\n", cfd,
-                strerror(errno));
-      }
-      if (close(efd) == -1) {
-        fprintf(stderr, "error: close on epoll fd: %d %s\n", cfd,
-                strerror(errno));
-      }
+      server_shutdown(sfd, efd);
       return 1;
     }
-    printf("------------ nfds: %d max %d\n", nfds, MAX_EVENTS);
+
+    // printf("------------ nfds: %d max %d\n", nfds, MAX_EVENTS);
 
     for (int n = 0; n < nfds; n++) {
       if (events[n].data.fd == sfd) {
+
+        
         // deque backlog as client socket
         if ((cfd = accept(sfd, (struct sockaddr *)&client, &cl)) >= 0) {
-          fprintf(stdout, "client connection accepted on fd: %d\n", cfd);
+          // fprintf(stdout, "client connection accepted on fd: %d\n", cfd);
         } else {
           fprintf(stderr, "error: client accept on: %d, %s\n", cfd,
                   strerror(errno));
@@ -261,14 +257,7 @@ int main(int argc, char *argv[]) {
         if (setnonblocking(cfd) == -1) {
           fprintf(stderr, "error: setting SOCK_NONBLOCK on fd: %d %s\n", cfd,
                   strerror(errno));
-          if (close(sfd) == -1) {
-            fprintf(stderr, "error: close on fd: %d %s\n", cfd,
-                    strerror(errno));
-          }
-          if (close(efd) == -1) {
-            fprintf(stderr, "error: close on fd: %d %s\n", cfd,
-                    strerror(errno));
-          }
+          server_shutdown(sfd, efd);
           return 1;
         }
 
@@ -289,7 +278,7 @@ int main(int argc, char *argv[]) {
                   strerror(errno));
         }
       } else if (connection_error(events[n].data.fd, efd) != -1) {
-        handle_conn(conn_mgr, events[n].data.fd, efd);
+       handle_conn(conn_mgr, events[n].data.fd, efd);
       }
     }
   }
