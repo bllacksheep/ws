@@ -30,8 +30,8 @@ void handle_conn(conn_manager_t *cm, unsigned int cfd, unsigned int epfd) {
 
   // TODO: if 0 clean up allocated resources
   if (bytes_read == 0) {
-    // 0 EOF == tcp CLOSE_WAIT
-    // fprintf(stdout, "info: client closed connection: %d\n", cfd);
+    // 0 EOF == tcp CLOSE_WAIT 
+    // fprintf(stdout, "info: client closed connection: %d\n", cfd); 
     if (epoll_ctl(epfd, EPOLL_CTL_DEL, cfd, NULL) == -1) {
       fprintf(stderr, "error: remove fd from interest list: %d %s\n", cfd,
               strerror(errno));
@@ -152,13 +152,17 @@ void drain_accept_queue(int server_fd, int server_epoll_fd, int client_epoll_fd,
                         struct sockaddr_in client_addr,
                         socklen_t *client_addr_len) {
 
-  // deque backlog as client socket
   int cfd;
-  if ((cfd = accept(server_fd, (struct sockaddr *)&client_addr,
-                    client_addr_len)) >= 0) {
-    // fprintf(stdout, "client connection accepted on fd: %d\n", cfd);
-  } else {
-    fprintf(stderr, "error: client accept on: %d, %s\n", cfd, strerror(errno));
+  for (;;) {
+  // deque backlog as client socket
+  cfd = accept(server_fd, (struct sockaddr *)&client_addr, client_addr_len);
+  if (cfd < 0) {
+    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        break;
+    } else {
+        fprintf(stderr, "error: client accept on: %d, %s\n", cfd, strerror(errno));
+    break;
+    }
   }
 
   // need accept4() to set SOCK_NONBLOCK flag
@@ -185,6 +189,7 @@ void drain_accept_queue(int server_fd, int server_epoll_fd, int client_epoll_fd,
     fprintf(stderr, "error: epoll add cfd to instance list failed %s\n",
             strerror(errno));
   }
+ }
 }
 
 int main(int argc, char *argv[]) {
@@ -228,6 +233,13 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  if (setnonblocking(sfd) == -1) {
+    fprintf(stderr, "error: setting SOCK_NONBLOCK on fd: %d %s\n", cfd,
+            strerror(errno));
+    server_shutdown(sfd, 0, 0);
+    // potentially some form of exit
+  }
+
   int opt = 1;
   if (setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
     fprintf(stderr, "error: setting sockopts %s\n", strerror(errno));
@@ -252,6 +264,7 @@ int main(int argc, char *argv[]) {
     server_shutdown(sfd, 0, 0);
     return 1;
   }
+
   printf("Listening on %s:%d\n", address, ntohs(port));
 
   memset(&client, 0, sizeof(client));
@@ -265,6 +278,8 @@ int main(int argc, char *argv[]) {
     server_shutdown(sfd, sefd, 0);
     return 1;
   }
+
+
   if ((cefd = epoll_create1(0)) == -1) {
     fprintf(stderr, "error: creating client conn epoll instance %s\n",
             strerror(errno));
