@@ -8,10 +8,10 @@
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <pthread.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -31,8 +31,8 @@ void handle_conn(conn_manager_t *cm, unsigned int cfd, unsigned int epfd) {
 
   // TODO: if 0 clean up allocated resources
   if (bytes_read == 0) {
-    // 0 EOF == tcp CLOSE_WAIT 
-    // fprintf(stdout, "info: client closed connection: %d\n", cfd); 
+    // 0 EOF == tcp CLOSE_WAIT
+    // fprintf(stdout, "info: client closed connection: %d\n", cfd);
     if (epoll_ctl(epfd, EPOLL_CTL_DEL, cfd, NULL) == -1) {
       fprintf(stderr, "error: remove fd from interest list: %d %s\n", cfd,
               strerror(errno));
@@ -155,42 +155,43 @@ void drain_accept_queue(int server_fd, int server_epoll_fd, int client_epoll_fd,
 
   int cfd;
   for (;;) {
-  // deque backlog as client socket
-  cfd = accept(server_fd, (struct sockaddr *)&client_addr, client_addr_len);
-  if (cfd < 0) {
-    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+    // deque backlog as client socket
+    cfd = accept(server_fd, (struct sockaddr *)&client_addr, client_addr_len);
+    if (cfd < 0) {
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
         break;
-    } else {
-        fprintf(stderr, "error: client accept on: %d, %s\n", cfd, strerror(errno));
-    break;
+      } else {
+        fprintf(stderr, "error: client accept on: %d, %s\n", cfd,
+                strerror(errno));
+        break;
+      }
+    }
+
+    // need accept4() to set SOCK_NONBLOCK flag
+    if (setnonblocking(cfd) == -1) {
+      fprintf(stderr, "error: setting SOCK_NONBLOCK on fd: %d %s\n", cfd,
+              strerror(errno));
+      server_shutdown(server_fd, server_epoll_fd, client_epoll_fd);
+      // potentially some form of exit
+    }
+
+    connection_manager_track(connection_manager, cfd);
+    //
+    // for (int i = 5; i < conn_mgr->cap; i++) {
+    //   if (conn_mgr->conn[i] != NULL) {
+    //     printf("fd: %d, buf: %s, ds cap: %zu\n", conn_mgr->conn[i]->fd,
+    //            conn_mgr->conn[i]->buf, conn_mgr->cap);
+    //   }
+    // }
+
+    client_event.events = EPOLLIN | EPOLLERR; //| EPOLLET;
+    client_event.data.fd = cfd;
+
+    if (epoll_ctl(client_epoll_fd, EPOLL_CTL_ADD, cfd, &client_event) == -1) {
+      fprintf(stderr, "error: epoll add cfd to instance list failed %s\n",
+              strerror(errno));
     }
   }
-
-  // need accept4() to set SOCK_NONBLOCK flag
-  if (setnonblocking(cfd) == -1) {
-    fprintf(stderr, "error: setting SOCK_NONBLOCK on fd: %d %s\n", cfd,
-            strerror(errno));
-    server_shutdown(server_fd, server_epoll_fd, client_epoll_fd);
-    // potentially some form of exit
-  }
-
-  connection_manager_track(connection_manager, cfd);
-  //
-  // for (int i = 5; i < conn_mgr->cap; i++) {
-  //   if (conn_mgr->conn[i] != NULL) {
-  //     printf("fd: %d, buf: %s, ds cap: %zu\n", conn_mgr->conn[i]->fd,
-  //            conn_mgr->conn[i]->buf, conn_mgr->cap);
-  //   }
-  // }
-
-  client_event.events = EPOLLIN | EPOLLERR; //| EPOLLET;
-  client_event.data.fd = cfd;
-
-  if (epoll_ctl(client_epoll_fd, EPOLL_CTL_ADD, cfd, &client_event) == -1) {
-    fprintf(stderr, "error: epoll add cfd to instance list failed %s\n",
-            strerror(errno));
-  }
- }
 }
 
 int main(int argc, char *argv[]) {
@@ -280,7 +281,6 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-
   if ((cefd = epoll_create1(0)) == -1) {
     fprintf(stderr, "error: creating client conn epoll instance %s\n",
             strerror(errno));
@@ -298,28 +298,28 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-void *t(void *data) {
+  void *t(void *data) {
     pthread_t tid;
-   
+
     tid = pthread_self();
     printf("thread id: %ld\n", tid);
 
-  for (;;) {
-    if (epoll_wait(sefd, server_events, MAX_EVENTS, -1) == -1) {
-      fprintf(stderr, "error: epoll_wait on server fd %s\n", strerror(errno));
-      // strace causes EINTR on epoll_wait
-      if (errno == EINTR)
-        continue;
-      server_shutdown(sfd, sefd, cefd);
-      exit(1);
+    for (;;) {
+      if (epoll_wait(sefd, server_events, MAX_EVENTS, -1) == -1) {
+        fprintf(stderr, "error: epoll_wait on server fd %s\n", strerror(errno));
+        // strace causes EINTR on epoll_wait
+        if (errno == EINTR)
+          continue;
+        server_shutdown(sfd, sefd, cefd);
+        exit(1);
+      }
+      drain_accept_queue(sfd, sefd, cefd, cev, conn_mgr, client, &cl);
     }
-    drain_accept_queue(sfd, sefd, cefd, cev, conn_mgr, client, &cl);
-    }
-    }
+  }
 
   pthread_t accept_loop;
   pthread_t conn_loop;
- 
+
   pthread_create(&accept_loop, NULL, t, NULL);
 
   for (;;) {
