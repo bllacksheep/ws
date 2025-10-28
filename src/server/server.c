@@ -103,7 +103,6 @@ int connection_error(int fd, int epfd) {
     return -1;
   }
   if (err == ECONNRESET) {
-
     // printf("Connection reset by peer\n");
 
     if (epoll_ctl(epfd, EPOLL_CTL_DEL, fd, NULL) == -1) {
@@ -128,14 +127,16 @@ int connection_error(int fd, int epfd) {
 }
 
 void server_shutdown(int server_fd, int epoll_fd) {
-    if (close(server_fd) == -1) {
-      fprintf(stderr, "error: close on server fd: %d %s\n", server_fd, strerror(errno));
-    }
-    if (epoll_fd > 0) {
+  if (close(server_fd) == -1) {
+    fprintf(stderr, "error: close on server fd: %d %s\n", server_fd,
+            strerror(errno));
+  }
+  if (epoll_fd > 0) {
     if (close(epoll_fd) == -1) {
-      fprintf(stderr, "error: close on epoll fd: %d %s\n", epoll_fd, strerror(errno));
+      fprintf(stderr, "error: close on epoll fd: %d %s\n", epoll_fd,
+              strerror(errno));
     }
-    }
+  }
 }
 
 int main(int argc, char *argv[]) {
@@ -143,8 +144,8 @@ int main(int argc, char *argv[]) {
   unsigned int sfd, cfd, efd, nfds;
   struct sockaddr_in server;
   struct sockaddr_in client;
-  unsigned int rawip = 0;
   struct in_addr ip;
+  unsigned int rawip = 0;
   char *address;
   in_port_t port;
 
@@ -202,12 +203,10 @@ int main(int argc, char *argv[]) {
     server_shutdown(sfd, 0);
     return 1;
   }
-
   printf("Listening on %s:%d\n", address, ntohs(port));
 
   memset(&client, 0, sizeof(client));
   socklen_t cl = sizeof(client);
-
   struct epoll_event ev, events[MAX_EVENTS];
 
   if ((efd = epoll_create1(0)) == -1) {
@@ -244,7 +243,6 @@ int main(int argc, char *argv[]) {
     for (int n = 0; n < nfds; n++) {
       if (events[n].data.fd == sfd) {
 
-        
         // deque backlog as client socket
         if ((cfd = accept(sfd, (struct sockaddr *)&client, &cl)) >= 0) {
           // fprintf(stdout, "client connection accepted on fd: %d\n", cfd);
@@ -277,8 +275,8 @@ int main(int argc, char *argv[]) {
           fprintf(stderr, "error: epoll add cfd to instance list failed %s\n",
                   strerror(errno));
         }
-      } else if (connection_error(events[n].data.fd, efd) != -1) {
-       handle_conn(conn_mgr, events[n].data.fd, efd);
+      } else if (!connection_error(events[n].data.fd, efd)) {
+        handle_conn(conn_mgr, events[n].data.fd, efd);
       }
     }
   }
