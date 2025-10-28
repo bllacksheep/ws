@@ -127,14 +127,20 @@ int connection_error(int fd, int epfd) {
   return 0;
 }
 
-void server_shutdown(int server_fd, int epoll_fd) {
+void server_shutdown(int server_fd, int server_epoll_fd, int client_epoll_fd) {
   if (close(server_fd) == -1) {
     fprintf(stderr, "error: close on server fd: %d %s\n", server_fd,
             strerror(errno));
   }
-  if (epoll_fd > 0) {
-    if (close(epoll_fd) == -1) {
-      fprintf(stderr, "error: close on epoll fd: %d %s\n", epoll_fd,
+  if (server_epoll_fd > 0) {
+    if (close(server_epoll_fd) == -1) {
+      fprintf(stderr, "error: close on epoll fd: %d %s\n", server_epoll_fd,
+              strerror(errno));
+    }
+  }
+  if (client_epoll_fd > 0) {
+    if (close(client_epoll_fd) == -1) {
+      fprintf(stderr, "error: close on epoll fd: %d %s\n", client_epoll_fd,
               strerror(errno));
     }
   }
@@ -159,7 +165,7 @@ void drain_accept_queue(int server_fd, int server_epoll_fd,
   if (setnonblocking(cfd) == -1) {
     fprintf(stderr, "error: setting SOCK_NONBLOCK on fd: %d %s\n", cfd,
             strerror(errno));
-    server_shutdown(server_fd, server_epoll_fd);
+    server_shutdown(server_fd, server_epoll_fd, 0);
     // potentially some form of exit
   }
 
@@ -224,7 +230,7 @@ int main(int argc, char *argv[]) {
   int opt = 1;
   if (setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
     fprintf(stderr, "error: setting sockopts %s\n", strerror(errno));
-    server_shutdown(sfd, 0);
+    server_shutdown(sfd, 0, 0);
     return 1;
   }
 
@@ -236,55 +242,60 @@ int main(int argc, char *argv[]) {
 
   if (bind(sfd, (struct sockaddr *)&server, sizeof(server)) == -1) {
     fprintf(stderr, "bind error: %s\n", strerror(errno));
-    server_shutdown(sfd, 0);
+    server_shutdown(sfd, 0, 0);
     return 1;
   }
 
   if (listen(sfd, LISTEN_BACKLOG) == -1) {
     fprintf(stderr, "listen error: %s\n", strerror(errno));
-    server_shutdown(sfd, 0);
+    server_shutdown(sfd, 0, 0);
     return 1;
   }
   printf("Listening on %s:%d\n", address, ntohs(port));
 
   memset(&client, 0, sizeof(client));
   socklen_t cl = sizeof(client);
-  struct epoll_event ev, events[MAX_EVENTS];
+  struct epoll_event sev, server_events[MAX_EVENTS];
+  struct epoll_event cev, client_events[MAX_EVENTS];
 
   if ((sefd = epoll_create1(0)) == -1) {
-    fprintf(stderr, "error: createine epoll instance %s\n", strerror(errno));
-    server_shutdown(sfd, sefd);
+    fprintf(stderr, "error: creating server conn epoll instance %s\n",
+            strerror(errno));
+    server_shutdown(sfd, sefd, 0);
+    return 1;
+  }
+  if ((cefd = epoll_create1(0)) == -1) {
+    fprintf(stderr, "error: creating client conn epoll instance %s\n",
+            strerror(errno));
+    server_shutdown(sfd, sefd, cefd);
     return 1;
   }
 
-  // not handling errors yet
-  ev.events = EPOLLIN;
-  ev.data.fd = sfd;
+  sev.events = EPOLLIN | EPOLLERR;
+  sev.data.fd = sfd;
 
-  if (epoll_ctl(sefd, EPOLL_CTL_ADD, sfd, &ev) == -1) {
+  if (epoll_ctl(sefd, EPOLL_CTL_ADD, sfd, &sev) == -1) {
     fprintf(stderr, "error: epoll add sfd to instance list failed %s\n",
             strerror(errno));
-    server_shutdown(sfd, sefd);
+    server_shutdown(sfd, sefd, cefd);
     return 1;
   }
 
   for (;;) {
-    if ((nfds = epoll_wait(sefd, events, MAX_EVENTS, -1)) == -1) {
-      fprintf(stderr, "error: epoll_wait %s\n", strerror(errno));
-
+    if ((nfds = epoll_wait(sefd, server_events, MAX_EVENTS, -1)) == -1) {
+      fprintf(stderr, "error: epoll_wait on server fd %s\n", strerror(errno));
       // strace causes EINTR on epoll_wait
       if (errno == EINTR)
         continue;
-
-      server_shutdown(sfd, sefd);
+      server_shutdown(sfd, sefd, cefd);
       return 1;
     }
 
     for (int n = 0; n < nfds; n++) {
-      if (events[n].data.fd == sfd) {
-        drain_accept_queue(sfd, sefd, ev, conn_mgr, client, &cl);
-      } else if (!connection_error(events[n].data.fd, sefd)) {
-        handle_conn(conn_mgr, events[n].data.fd, sefd);
+      if (server_events[n].data.fd == sfd) {
+        drain_accept_queue(sfd, sefd, sev, conn_mgr, client, &cl);
+      } else if (!connection_error(server_events[n].data.fd, sefd)) {
+        handle_conn(conn_mgr, server_events[n].data.fd, sefd);
       }
     }
   }
