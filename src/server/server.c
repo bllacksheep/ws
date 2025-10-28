@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -297,22 +298,31 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+void *t(void *data) {
+    pthread_t tid;
+   
+    tid = pthread_self();
+    printf("thread id: %ld\n", tid);
+
   for (;;) {
-    // will be on its own thread
-    if ((num_recv_q_events = epoll_wait(sefd, server_events, MAX_EVENTS, -1)) ==
-        -1) {
+    if (epoll_wait(sefd, server_events, MAX_EVENTS, -1) == -1) {
       fprintf(stderr, "error: epoll_wait on server fd %s\n", strerror(errno));
       // strace causes EINTR on epoll_wait
       if (errno == EINTR)
         continue;
       server_shutdown(sfd, sefd, cefd);
-      return 1;
+      exit(1);
     }
-    for (int n = 0; n < num_recv_q_events; n++) {
-      if (server_events[n].data.fd == sfd) {
-        drain_accept_queue(sfd, sefd, cefd, cev, conn_mgr, client, &cl);
-      }
+    drain_accept_queue(sfd, sefd, cefd, cev, conn_mgr, client, &cl);
     }
+    }
+
+  pthread_t accept_loop;
+  pthread_t conn_loop;
+ 
+  pthread_create(&accept_loop, NULL, t, NULL);
+
+  for (;;) {
     // will be on its own thread
     if ((num_data_ready_events =
              epoll_wait(cefd, client_events, MAX_EVENTS, -1)) == -1) {
