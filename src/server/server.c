@@ -146,8 +146,8 @@ void server_shutdown(int server_fd, int server_epoll_fd, int client_epoll_fd) {
   }
 }
 
-void drain_accept_queue(int server_fd, int server_epoll_fd,
-                        struct epoll_event event,
+void drain_accept_queue(int server_fd, int server_epoll_fd, int client_epoll_fd,
+                        struct epoll_event client_event,
                         conn_manager_t *connection_manager,
                         struct sockaddr_in client_addr,
                         socklen_t *client_addr_len) {
@@ -165,7 +165,7 @@ void drain_accept_queue(int server_fd, int server_epoll_fd,
   if (setnonblocking(cfd) == -1) {
     fprintf(stderr, "error: setting SOCK_NONBLOCK on fd: %d %s\n", cfd,
             strerror(errno));
-    server_shutdown(server_fd, server_epoll_fd, 0);
+    server_shutdown(server_fd, server_epoll_fd, client_epoll_fd);
     // potentially some form of exit
   }
 
@@ -178,10 +178,10 @@ void drain_accept_queue(int server_fd, int server_epoll_fd,
   //   }
   // }
 
-  event.events = EPOLLIN | EPOLLERR; //| EPOLLET;
-  event.data.fd = cfd;
+  client_event.events = EPOLLIN | EPOLLERR; //| EPOLLET;
+  client_event.data.fd = cfd;
 
-  if (epoll_ctl(server_epoll_fd, EPOLL_CTL_ADD, cfd, &event) == -1) {
+  if (epoll_ctl(client_epoll_fd, EPOLL_CTL_ADD, cfd, &client_event) == -1) {
     fprintf(stderr, "error: epoll add cfd to instance list failed %s\n",
             strerror(errno));
   }
@@ -189,7 +189,8 @@ void drain_accept_queue(int server_fd, int server_epoll_fd,
 
 int main(int argc, char *argv[]) {
 
-  unsigned int sfd, cfd, sefd, cefd, nfds;
+  unsigned int num_recv_q_events, num_data_ready_events;
+  unsigned int sfd, cfd, sefd, cefd;
   struct sockaddr_in server;
   struct sockaddr_in client;
   struct in_addr ip;
@@ -282,7 +283,9 @@ int main(int argc, char *argv[]) {
   }
 
   for (;;) {
-    if ((nfds = epoll_wait(sefd, server_events, MAX_EVENTS, -1)) == -1) {
+    // will be on its own thread
+    if ((num_recv_q_events = epoll_wait(sefd, server_events, MAX_EVENTS, -1)) ==
+        -1) {
       fprintf(stderr, "error: epoll_wait on server fd %s\n", strerror(errno));
       // strace causes EINTR on epoll_wait
       if (errno == EINTR)
@@ -290,12 +293,24 @@ int main(int argc, char *argv[]) {
       server_shutdown(sfd, sefd, cefd);
       return 1;
     }
-
-    for (int n = 0; n < nfds; n++) {
+    for (int n = 0; n < num_recv_q_events; n++) {
       if (server_events[n].data.fd == sfd) {
-        drain_accept_queue(sfd, sefd, sev, conn_mgr, client, &cl);
-      } else if (!connection_error(server_events[n].data.fd, sefd)) {
-        handle_conn(conn_mgr, server_events[n].data.fd, sefd);
+        drain_accept_queue(sfd, sefd, cefd, cev, conn_mgr, client, &cl);
+      }
+    }
+    // will be on its own thread
+    if ((num_data_ready_events =
+             epoll_wait(cefd, client_events, MAX_EVENTS, -1)) == -1) {
+      fprintf(stderr, "error: epoll_wait on server fd %s\n", strerror(errno));
+      // strace causes EINTR on epoll_wait
+      if (errno == EINTR)
+        continue;
+      server_shutdown(sfd, sefd, cefd);
+      return 1;
+    }
+    for (int n = 0; n < num_data_ready_events; n++) {
+      if (!connection_error(client_events[n].data.fd, cefd)) {
+        handle_conn(conn_mgr, client_events[n].data.fd, cefd);
       }
     }
   }
