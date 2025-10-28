@@ -6,8 +6,8 @@
 
 // no "update" api so const should be fine
 typedef struct {
-    const char *key;
-    const char *value;
+  const char *key;
+  const char *value;
 } header_item_t;
 
 typedef struct {
@@ -17,37 +17,36 @@ typedef struct {
 } ws_headers_t;
 
 typedef struct {
-    const char *request_line;
-    const char *request_headers;
-    const char *request_body;
-    const unsigned int is_http;
+  const char *request_line;
+  const char *request_headers;
+  const char *request_body;
+  const unsigned int is_http;
 } raw_req_t;
 
 typedef struct {
-    char *body;
-    const unsigned int length;
+  char *body;
+  const unsigned int length;
 } http_body_t;
 
 typedef enum {
-    UNKNOWN,
-    GET,
-    POST,
+  UNKNOWN,
+  GET,
+  POST,
 } method_t;
 
 typedef struct {
-    const method_t request_method;
-    const char *request_uri;
-    const char *request_version;
-    ws_headers_t *request_headers;
-    http_body_t *request_body;
+  const method_t request_method;
+  const char *request_uri;
+  const char *request_version;
+  ws_headers_t *request_headers;
+  http_body_t *request_body;
 } req_t;
 
 typedef struct {
-    const char *name;
-    const method_t method;
+  const char *name;
+  const method_t method;
 } method_map_t;
 
-const char *
-handle_req(const char *, int);
+const char *handle_http_request_stream(const char *, int);
 
 #endif

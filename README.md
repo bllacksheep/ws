@@ -24,6 +24,10 @@ siege -c1 -r10 http://localhost:443/chat
 ##todo
 - implement fsm parser for http
 - implement request context pattern
+- use request context to communicate request state and conn state
+- keepalive for http/1.1 and non-persistent conns for http/1.0 (ab)
+- connection manager track state 
+- remove realloc from hot path - use pre-allocation and allocator back cleanup
 - implement chunked data tracking
 - implement websocket stream handling
 - test setup and stream with browser client
