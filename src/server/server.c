@@ -326,7 +326,7 @@ int main(int argc, char *argv[]) {
     // will be on its own thread
     if ((num_data_ready_events =
              epoll_wait(cefd, client_events, MAX_EVENTS, -1)) == -1) {
-      fprintf(stderr, "error: epoll_wait on server fd %s\n", strerror(errno));
+      fprintf(stderr, "error: epoll_wait on client fd %s\n", strerror(errno));
       // strace causes EINTR on epoll_wait
       if (errno == EINTR)
         continue;
