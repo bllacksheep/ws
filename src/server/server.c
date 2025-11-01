@@ -184,7 +184,7 @@ void drain_accept_queue(int server_fd, int server_epoll_fd, int client_epoll_fd,
     //   }
     // }
 
-    client_event.events = EPOLLIN | EPOLLERR; //| EPOLLET;
+    client_event.events = EPOLLIN | EPOLLET | EPOLLERR;
     client_event.data.fd = cfd;
 
     if (epoll_ctl(client_epoll_fd, EPOLL_CTL_ADD, cfd, &client_event) == -1) {
@@ -288,7 +288,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  sev.events = EPOLLIN | EPOLLERR;
+  sev.events = EPOLLIN | EPOLLET | EPOLLERR;
   sev.data.fd = sfd;
 
   if (epoll_ctl(sefd, EPOLL_CTL_ADD, sfd, &sev) == -1) {
@@ -305,7 +305,7 @@ int main(int argc, char *argv[]) {
     printf("thread id: %ld\n", tid);
 
     for (;;) {
-      if (epoll_wait(sefd, server_events, MAX_EVENTS, -1) == -1) {
+      if (epoll_wait(sefd, server_events, MAX_EVENTS, 0) == -1) {
         fprintf(stderr, "error: epoll_wait on server fd %s\n", strerror(errno));
         // strace causes EINTR on epoll_wait
         if (errno == EINTR)
@@ -317,27 +317,41 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  void *t2(void *data) {
+    pthread_t tid;
+
+    tid = pthread_self();
+    printf("thread id: %ld\n", tid);
+
+    for (;;) {
+      // will be on its own thread
+      if ((num_data_ready_events =
+               epoll_wait(cefd, client_events, MAX_EVENTS, 0)) == -1) {
+        fprintf(stderr, "error: epoll_wait on client fd %s\n", strerror(errno));
+        // strace causes EINTR on epoll_wait
+        if (errno == EINTR)
+          continue;
+        server_shutdown(sfd, sefd, cefd);
+        return 1;
+      }
+      // printf("number of data ready events this iteration: %d\n",
+      // num_data_ready_events);
+      for (int n = 0; n < num_data_ready_events; n++) {
+        if (!connection_error(client_events[n].data.fd, cefd)) {
+          handle_conn(conn_mgr, client_events[n].data.fd, cefd);
+        }
+      }
+    }
+  }
+
   pthread_t accept_loop;
   pthread_t conn_loop;
 
   pthread_create(&accept_loop, NULL, t, NULL);
+  pthread_create(&conn_loop, NULL, t2, NULL);
 
   for (;;) {
-    // will be on its own thread
-    if ((num_data_ready_events =
-             epoll_wait(cefd, client_events, MAX_EVENTS, -1)) == -1) {
-      fprintf(stderr, "error: epoll_wait on client fd %s\n", strerror(errno));
-      // strace causes EINTR on epoll_wait
-      if (errno == EINTR)
-        continue;
-      server_shutdown(sfd, sefd, cefd);
-      return 1;
-    }
-    for (int n = 0; n < num_data_ready_events; n++) {
-      if (!connection_error(client_events[n].data.fd, cefd)) {
-        handle_conn(conn_mgr, client_events[n].data.fd, cefd);
-      }
-    }
+    // server loop
   }
 
   if (close(sfd) == -1) {
@@ -346,3 +360,7 @@ int main(int argc, char *argv[]) {
 
   return 0;
 }
+
+/*
+ * are all the iterations necessary for what's being returned by nfds
+ * */
