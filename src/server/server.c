@@ -22,7 +22,8 @@ void handle_conn(conn_manager_t *cm, unsigned int cfd, unsigned int epfd) {
   // char http_request_stream[MAX_REQ_SIZE + 1] = {0};
   // non-blocking, so should read MAX_REQ_SIZE
   // if data then can't be read until next event
-  ssize_t bytes_read = read(cfd, cm->conn[cfd]->buf, MAX_REQ_SIZE);
+  ssize_t bytes_read =
+      recvfrom(cfd, cm->conn[cfd]->buf, MAX_REQ_SIZE, NULL, NULL, NULL);
 
   // TODO: if 0 clean up allocated resources
   if (bytes_read == 0) {
