@@ -5,8 +5,13 @@
 #ifndef _CONN_MAN_h
 #define _CONN_MAN_h
 
+<<<<<<< Updated upstream
 #define CONN_MANAGER_BYTE_STREAM_IN 256
 #define CONN_MANAGER_CONN_POOL 2048
+=======
+#define CONN_MANAGER_BYTE_STREAM_IN 1024
+#define CONN_MANAGER_CONN_POOL 1024
+>>>>>>> Stashed changes
 #define CONN_MANAGER_DEALLOC_THRESHOLD 100
 
 enum conn_state { CONN_KEEP_ALIVE, CONN_CLOSE };

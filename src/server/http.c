@@ -119,8 +119,13 @@ const char *_400_bad_request = "\n\nHTTP/1.1 400 Bad Request\r\n"
                                "Content-Length: 13\r\n\r\n"
                                "That Ain't It\n";
 
+
 const char *_200_ok = "HTTP/1.1 200 OK\r\n"
-                      "Content-Length: 0\r\n\r\n";
+                      "Server: server/0.0.0 (Ubuntu)\r\n"
+                      "Content-Length: 0\r\n"
+                      "Date: Thu, 06 Nov 2025 21:58:42 GMT\r\n"
+                      "Content-Type: text/plain\r\n"
+                      "Connection: keep-alive\r\n\r\n";
 
 // handler returning response string
 const char *handle_http_request_stream(const char *raw_req_buf,

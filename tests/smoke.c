@@ -55,7 +55,7 @@ Test(smoke, basic) {
   if (pid == 0) {
     char address[100];
     sprintf(address, "http://%s:%s/chat", ADDR, PORT);
-    execl("/usr/local/bin/siege", "siege", "-c5", "-r2", address, (char *)NULL);
+    execl("/usr/bin/siege", "siege", "-c5", "-r2", address, (char *)NULL);
     perror("error: siege exec");
     exit(1);
   } else {

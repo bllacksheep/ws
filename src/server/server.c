@@ -19,15 +19,10 @@
 
 // handle conn is not a loop and it needs to be
 void handle_conn(conn_manager_t *cm, unsigned int cfd, unsigned int epfd) {
-  // printf("entered handle_conn: fd %d\n", cfd);
-
   // char http_request_stream[MAX_REQ_SIZE + 1] = {0};
   // non-blocking, so should read MAX_REQ_SIZE
   // if data then can't be read until next event
-  int x = 1;
   ssize_t bytes_read = read(cfd, cm->conn[cfd]->buf, MAX_REQ_SIZE);
-
-  // printf("bytes read: %zd: fd %d\n", bytes_read, cfd);
 
   // TODO: if 0 clean up allocated resources
   if (bytes_read == 0) {
@@ -156,7 +151,7 @@ void drain_accept_queue(int server_fd, int server_epoll_fd, int client_epoll_fd,
   int cfd;
   for (;;) {
     // deque backlog as client socket
-    cfd = accept(server_fd, (struct sockaddr *)&client_addr, client_addr_len);
+    cfd = accept4(server_fd, (struct sockaddr *)&client_addr, client_addr_len, SOCK_NONBLOCK);
     if (cfd < 0) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
         break;
@@ -168,12 +163,12 @@ void drain_accept_queue(int server_fd, int server_epoll_fd, int client_epoll_fd,
     }
 
     // need accept4() to set SOCK_NONBLOCK flag
-    if (setnonblocking(cfd) == -1) {
-      fprintf(stderr, "error: setting SOCK_NONBLOCK on fd: %d %s\n", cfd,
-              strerror(errno));
-      server_shutdown(server_fd, server_epoll_fd, client_epoll_fd);
-      // potentially some form of exit
-    }
+    // if (setnonblocking(cfd) == -1) {
+    //   fprintf(stderr, "error: setting SOCK_NONBLOCK on fd: %d %s\n", cfd,
+    //           strerror(errno));
+    //   server_shutdown(server_fd, server_epoll_fd, client_epoll_fd);
+    //   // potentially some form of exit
+    // }
 
     connection_manager_track(connection_manager, cfd);
     //
@@ -184,7 +179,7 @@ void drain_accept_queue(int server_fd, int server_epoll_fd, int client_epoll_fd,
     //   }
     // }
 
-    client_event.events = EPOLLIN | EPOLLET | EPOLLERR;
+    client_event.events = EPOLLIN | EPOLLOUT| EPOLLET | EPOLLERR;
     client_event.data.fd = cfd;
 
     if (epoll_ctl(client_epoll_fd, EPOLL_CTL_ADD, cfd, &client_event) == -1) {
@@ -288,7 +283,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  sev.events = EPOLLIN | EPOLLET | EPOLLERR;
+  sev.events = EPOLLIN |EPOLLOUT| EPOLLET| EPOLLERR;
   sev.data.fd = sfd;
 
   if (epoll_ctl(sefd, EPOLL_CTL_ADD, sfd, &sev) == -1) {
