@@ -182,7 +182,7 @@ void drain_accept_queue(int server_fd, int server_epoll_fd, int client_epoll_fd,
     //   }
     // }
 
-    client_event.events = EPOLLIN | EPOLLOUT| EPOLLET | EPOLLERR;
+    client_event.events = EPOLLIN | EPOLLOUT | EPOLLET | EPOLLERR;
     client_event.data.fd = cfd;
 
     if (epoll_ctl(client_epoll_fd, EPOLL_CTL_ADD, cfd, &client_event) == -1) {
@@ -286,7 +286,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  sev.events = EPOLLIN |EPOLLOUT| EPOLLET| EPOLLERR;
+  sev.events = EPOLLIN | EPOLLOUT | EPOLLET | EPOLLERR;
   sev.data.fd = sfd;
 
   if (epoll_ctl(sefd, EPOLL_CTL_ADD, sfd, &sev) == -1) {
