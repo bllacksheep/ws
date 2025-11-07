@@ -153,7 +153,8 @@ void drain_accept_queue(int server_fd, int server_epoll_fd, int client_epoll_fd,
   int cfd;
   for (;;) {
     // deque backlog as client socket
-    cfd = accept4(server_fd, (struct sockaddr *)&client_addr, client_addr_len, SOCK_NONBLOCK);
+    cfd = accept4(server_fd, (struct sockaddr *)&client_addr, client_addr_len,
+                  SOCK_NONBLOCK);
     if (cfd < 0) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
         break;
