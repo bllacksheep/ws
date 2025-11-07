@@ -296,14 +296,14 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  void *t(void *data) {
+  void *handle_incoming_connx(void *data) {
     pthread_t tid;
 
     tid = pthread_self();
     printf("thread id: %ld\n", tid);
 
     for (;;) {
-      if (epoll_wait(sefd, server_events, MAX_EVENTS, 0) == -1) {
+      if (epoll_wait(sefd, server_events, MAX_EVENTS, -1) == -1) {
         fprintf(stderr, "error: epoll_wait on server fd %s\n", strerror(errno));
         // strace causes EINTR on epoll_wait
         if (errno == EINTR)
@@ -315,7 +315,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  void *t2(void *data) {
+  void *handle_incoming_data(void *data) {
     pthread_t tid;
 
     tid = pthread_self();
@@ -324,7 +324,7 @@ int main(int argc, char *argv[]) {
     for (;;) {
       // will be on its own thread
       if ((num_data_ready_events =
-               epoll_wait(cefd, client_events, MAX_EVENTS, 0)) == -1) {
+               epoll_wait(cefd, client_events, MAX_EVENTS, -1)) == -1) {
         fprintf(stderr, "error: epoll_wait on client fd %s\n", strerror(errno));
         // strace causes EINTR on epoll_wait
         if (errno == EINTR)
@@ -335,18 +335,19 @@ int main(int argc, char *argv[]) {
       // printf("number of data ready events this iteration: %d\n",
       // num_data_ready_events);
       for (int n = 0; n < num_data_ready_events; n++) {
-        if (!connection_error(client_events[n].data.fd, cefd)) {
-          handle_conn(conn_mgr, client_events[n].data.fd, cefd);
-        }
+        handle_conn(conn_mgr, client_events[n].data.fd, cefd);
+        // if (!connection_error(client_events[n].data.fd, cefd)) {
+        //   handle_conn(conn_mgr, client_events[n].data.fd, cefd);
+        // }
       }
     }
   }
 
-  pthread_t accept_loop;
-  pthread_t conn_loop;
+  pthread_t process_accept_events;
+  pthread_t process_data_events;
 
-  pthread_create(&accept_loop, NULL, t, NULL);
-  pthread_create(&conn_loop, NULL, t2, NULL);
+  pthread_create(&process_accept_events, NULL, handle_incoming_connx, NULL);
+  pthread_create(&process_data_events, NULL, handle_incoming_data, NULL);
 
   for (;;) {
     // server loop
