@@ -40,7 +40,8 @@ void handle_conn(conn_manager_t *cm, unsigned int cfd, unsigned int epfd) {
     return;
 
   } else if (bytes_read == -1) {
-    fprintf(stderr, "error: reading from fd: %d, %s\n", cfd, strerror(errno));
+    // fprintf(stderr, "error: reading from fd: %d, %s\n", cfd,
+    // strerror(errno));
     return;
   } else {
 
@@ -231,12 +232,12 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  if (setnonblocking(sfd) == -1) {
-    fprintf(stderr, "error: setting SOCK_NONBLOCK on fd: %d %s\n", cfd,
-            strerror(errno));
-    server_shutdown(sfd, 0, 0);
-    // potentially some form of exit
-  }
+  // if (setnonblocking(sfd) == -1) {
+  //   fprintf(stderr, "error: setting SOCK_NONBLOCK on fd: %d %s\n", cfd,
+  //           strerror(errno));
+  //   server_shutdown(sfd, 0, 0);
+  //   // potentially some form of exit
+  // }
 
   int opt = 1;
   if (setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
