@@ -24,7 +24,6 @@ void handle_conn(conn_manager_t *cm, unsigned int cfd, unsigned int epfd) {
   // if data then can't be read until next event
   ssize_t bytes_read =
       recvfrom(cfd, cm->conn[cfd]->buf, MAX_REQ_SIZE, NULL, NULL, NULL);
-
   // TODO: if 0 clean up allocated resources
   if (bytes_read == 0) {
     // 0 EOF == tcp CLOSE_WAIT
@@ -38,13 +37,11 @@ void handle_conn(conn_manager_t *cm, unsigned int cfd, unsigned int epfd) {
       return;
     }
     return;
-
   } else if (bytes_read == -1) {
     // fprintf(stderr, "error: reading from fd: %d, %s\n", cfd,
     // strerror(errno));
     return;
   } else {
-
     /*
      * read get's you a byte steam
      * make sense of byte steam tokenize handle error states early here
@@ -57,7 +54,6 @@ void handle_conn(conn_manager_t *cm, unsigned int cfd, unsigned int epfd) {
     // assign context to connection
     const char *http_response_stream =
         handle_http_request_stream(cm->conn[cfd]->buf, bytes_read);
-
     // const char *http_response_stream =
     //     handle_http_request_stream(http_request_stream, bytes_read);
 
@@ -93,38 +89,6 @@ int setnonblocking(unsigned int fd) {
   return 0;
 }
 
-int connection_error(int fd, int epfd) {
-  int err = 0;
-  socklen_t len = sizeof(err);
-  if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &len) == -1) {
-    fprintf(stderr, "error: getting socket opts, fd: %d %s\n", fd,
-            strerror(errno));
-    return -1;
-  }
-  if (err == ECONNRESET) {
-    // printf("Connection reset by peer\n");
-
-    if (epoll_ctl(epfd, EPOLL_CTL_DEL, fd, NULL) == -1) {
-      fprintf(stderr, "error: removing stale fd from interest list: %d %s\n",
-              fd, strerror(errno));
-      return -1;
-    }
-    if (close(fd) == -1) {
-      fprintf(stderr, "error: close on fd: %d %s\n", fd, strerror(errno));
-      return -1;
-    }
-    return -1;
-  } else if (err != 0) {
-    fprintf(stderr, "error: unknown socket error %d %s\n", fd, strerror(errno));
-    if (close(fd) == -1) {
-      fprintf(stderr, "error: close on fd: %d %s\n", fd, strerror(errno));
-      return -1;
-    }
-    return -1;
-  }
-  return 0;
-}
-
 void server_shutdown(int server_fd, int epoll_fd) {
   if (close(server_fd) == -1) {
     fprintf(stderr, "error: close on server fd: %d %s\n", server_fd,
@@ -143,7 +107,6 @@ void drain_accept_queue(int server_fd, int epoll_fd,
                         conn_manager_t *connection_manager,
                         struct sockaddr_in client_addr,
                         socklen_t *client_addr_len) {
-
   int cfd;
   for (;;) {
     // deque backlog as client socket
@@ -160,12 +123,9 @@ void drain_accept_queue(int server_fd, int epoll_fd,
         break;
       }
     }
-
     connection_manager_track(connection_manager, cfd);
-
     client_event.events = EPOLLIN | EPOLLRDHUP | EPOLLET;
     client_event.data.fd = cfd;
-
     if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, cfd, &client_event) == -1) {
       fprintf(stderr, "error: epoll add cfd to instance list failed %s\n",
               strerror(errno));
@@ -174,7 +134,6 @@ void drain_accept_queue(int server_fd, int epoll_fd,
 }
 
 int main(int argc, char *argv[]) {
-
   unsigned int num_recv_q_events, num_ready_events;
   unsigned int sfd, cfd, efd;
   struct sockaddr_in server;
@@ -268,7 +227,6 @@ int main(int argc, char *argv[]) {
     server_shutdown(sfd, efd);
     return 1;
   }
-
   for (;;) {
     if ((num_ready_events = epoll_wait(efd, events, MAX_EVENTS, -1)) == -1) {
       fprintf(stderr, "error: epoll_wait on server fd %s\n", strerror(errno));
@@ -278,29 +236,20 @@ int main(int argc, char *argv[]) {
       server_shutdown(sfd, efd);
       exit(1);
     }
-
     for (int n = 0; n < num_ready_events; n++) {
       if (events[n].events & EPOLLRDHUP) {
         close(events[n].data.fd);
         continue;
       }
-
       if (events[n].data.fd == sfd) {
         drain_accept_queue(sfd, efd, cev, conn_mgr, client, &cl);
       } else {
-        // if (!connection_error(client_events[n].data.fd, cefd)) {
         handle_conn(conn_mgr, events[n].data.fd, efd);
       }
     }
   }
-
   if (close(sfd) == -1) {
     fprintf(stderr, "error: close on fd: %d %s\n", cfd, strerror(errno));
   }
-
   return 0;
 }
-
-/*
- * are all the iterations necessary for what's being returned by nfds
- * */
