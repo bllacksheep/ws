@@ -125,26 +125,20 @@ int connection_error(int fd, int epfd) {
   return 0;
 }
 
-void server_shutdown(int server_fd, int server_epoll_fd, int client_epoll_fd) {
+void server_shutdown(int server_fd, int epoll_fd) {
   if (close(server_fd) == -1) {
     fprintf(stderr, "error: close on server fd: %d %s\n", server_fd,
             strerror(errno));
   }
-  if (server_epoll_fd > 0) {
-    if (close(server_epoll_fd) == -1) {
-      fprintf(stderr, "error: close on epoll fd: %d %s\n", server_epoll_fd,
-              strerror(errno));
-    }
-  }
-  if (client_epoll_fd > 0) {
-    if (close(client_epoll_fd) == -1) {
-      fprintf(stderr, "error: close on epoll fd: %d %s\n", client_epoll_fd,
+  if (epoll_fd > 0) {
+    if (close(epoll_fd) == -1) {
+      fprintf(stderr, "error: close on epoll fd: %d %s\n", epoll_fd,
               strerror(errno));
     }
   }
 }
 
-void drain_accept_queue(int server_fd, int server_epoll_fd, int client_epoll_fd,
+void drain_accept_queue(int server_fd, int epoll_fd,
                         struct epoll_event client_event,
                         conn_manager_t *connection_manager,
                         struct sockaddr_in client_addr,
@@ -156,8 +150,10 @@ void drain_accept_queue(int server_fd, int server_epoll_fd, int client_epoll_fd,
     cfd = accept4(server_fd, (struct sockaddr *)&client_addr, client_addr_len,
                   SOCK_NONBLOCK);
     if (cfd < 0) {
+      // drained
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
         break;
+        // feels unnecessary
       } else {
         fprintf(stderr, "error: client accept on: %d, %s\n", cfd,
                 strerror(errno));
@@ -165,27 +161,12 @@ void drain_accept_queue(int server_fd, int server_epoll_fd, int client_epoll_fd,
       }
     }
 
-    // need accept4() to set SOCK_NONBLOCK flag
-    // if (setnonblocking(cfd) == -1) {
-    //   fprintf(stderr, "error: setting SOCK_NONBLOCK on fd: %d %s\n", cfd,
-    //           strerror(errno));
-    //   server_shutdown(server_fd, server_epoll_fd, client_epoll_fd);
-    //   // potentially some form of exit
-    // }
-
     connection_manager_track(connection_manager, cfd);
-    //
-    // for (int i = 5; i < conn_mgr->cap; i++) {
-    //   if (conn_mgr->conn[i] != NULL) {
-    //     printf("fd: %d, buf: %s, ds cap: %zu\n", conn_mgr->conn[i]->fd,
-    //            conn_mgr->conn[i]->buf, conn_mgr->cap);
-    //   }
-    // }
 
-    client_event.events = EPOLLIN | EPOLLOUT | EPOLLET | EPOLLERR;
+    client_event.events = EPOLLIN | EPOLLRDHUP | EPOLLET;
     client_event.data.fd = cfd;
 
-    if (epoll_ctl(client_epoll_fd, EPOLL_CTL_ADD, cfd, &client_event) == -1) {
+    if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, cfd, &client_event) == -1) {
       fprintf(stderr, "error: epoll add cfd to instance list failed %s\n",
               strerror(errno));
     }
@@ -194,8 +175,8 @@ void drain_accept_queue(int server_fd, int server_epoll_fd, int client_epoll_fd,
 
 int main(int argc, char *argv[]) {
 
-  unsigned int num_recv_q_events, num_data_ready_events;
-  unsigned int sfd, cfd, sefd, cefd;
+  unsigned int num_recv_q_events, num_ready_events;
+  unsigned int sfd, cfd, efd;
   struct sockaddr_in server;
   struct sockaddr_in client;
   struct in_addr ip;
@@ -233,17 +214,17 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  // if (setnonblocking(sfd) == -1) {
-  //   fprintf(stderr, "error: setting SOCK_NONBLOCK on fd: %d %s\n", cfd,
-  //           strerror(errno));
-  //   server_shutdown(sfd, 0, 0);
-  //   // potentially some form of exit
-  // }
+  if (setnonblocking(sfd) == -1) {
+    fprintf(stderr, "error: setting SOCK_NONBLOCK on fd: %d %s\n", cfd,
+            strerror(errno));
+    server_shutdown(sfd, 0);
+    // potentially some form of exit
+  }
 
   int opt = 1;
   if (setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
     fprintf(stderr, "error: setting sockopts %s\n", strerror(errno));
-    server_shutdown(sfd, 0, 0);
+    server_shutdown(sfd, 0);
     return 1;
   }
 
@@ -255,13 +236,13 @@ int main(int argc, char *argv[]) {
 
   if (bind(sfd, (struct sockaddr *)&server, sizeof(server)) == -1) {
     fprintf(stderr, "bind error: %s\n", strerror(errno));
-    server_shutdown(sfd, 0, 0);
+    server_shutdown(sfd, 0);
     return 1;
   }
 
   if (listen(sfd, LISTEN_BACKLOG) == -1) {
     fprintf(stderr, "listen error: %s\n", strerror(errno));
-    server_shutdown(sfd, 0, 0);
+    server_shutdown(sfd, 0);
     return 1;
   }
 
@@ -269,88 +250,48 @@ int main(int argc, char *argv[]) {
 
   memset(&client, 0, sizeof(client));
   socklen_t cl = sizeof(client);
-  struct epoll_event sev, server_events[MAX_EVENTS];
-  struct epoll_event cev, client_events[MAX_EVENTS];
+  struct epoll_event cev, sev, events[MAX_EVENTS];
 
-  if ((sefd = epoll_create1(0)) == -1) {
+  if ((efd = epoll_create1(0)) == -1) {
     fprintf(stderr, "error: creating server conn epoll instance %s\n",
             strerror(errno));
-    server_shutdown(sfd, sefd, 0);
+    server_shutdown(sfd, efd);
     return 1;
   }
 
-  if ((cefd = epoll_create1(0)) == -1) {
-    fprintf(stderr, "error: creating client conn epoll instance %s\n",
-            strerror(errno));
-    server_shutdown(sfd, sefd, cefd);
-    return 1;
-  }
-
-  sev.events = EPOLLIN | EPOLLOUT | EPOLLET | EPOLLERR;
+  sev.events = EPOLLIN;
   sev.data.fd = sfd;
 
-  if (epoll_ctl(sefd, EPOLL_CTL_ADD, sfd, &sev) == -1) {
+  if (epoll_ctl(efd, EPOLL_CTL_ADD, sfd, &sev) == -1) {
     fprintf(stderr, "error: epoll add sfd to instance list failed %s\n",
             strerror(errno));
-    server_shutdown(sfd, sefd, cefd);
+    server_shutdown(sfd, efd);
     return 1;
   }
 
-  void *handle_incoming_connx(void *data) {
-    pthread_t tid;
-
-    tid = pthread_self();
-    printf("thread id: %ld\n", tid);
-
-    for (;;) {
-      if (epoll_wait(sefd, server_events, MAX_EVENTS, -1) == -1) {
-        fprintf(stderr, "error: epoll_wait on server fd %s\n", strerror(errno));
-        // strace causes EINTR on epoll_wait
-        if (errno == EINTR)
-          continue;
-        server_shutdown(sfd, sefd, cefd);
-        exit(1);
-      }
-      drain_accept_queue(sfd, sefd, cefd, cev, conn_mgr, client, &cl);
-    }
-  }
-
-  void *handle_incoming_data(void *data) {
-    pthread_t tid;
-
-    tid = pthread_self();
-    printf("thread id: %ld\n", tid);
-
-    for (;;) {
-      // will be on its own thread
-      if ((num_data_ready_events =
-               epoll_wait(cefd, client_events, MAX_EVENTS, -1)) == -1) {
-        fprintf(stderr, "error: epoll_wait on client fd %s\n", strerror(errno));
-        // strace causes EINTR on epoll_wait
-        if (errno == EINTR)
-          continue;
-        server_shutdown(sfd, sefd, cefd);
-        return 1;
-      }
-      // printf("number of data ready events this iteration: %d\n",
-      // num_data_ready_events);
-      for (int n = 0; n < num_data_ready_events; n++) {
-        handle_conn(conn_mgr, client_events[n].data.fd, cefd);
-        // if (!connection_error(client_events[n].data.fd, cefd)) {
-        //   handle_conn(conn_mgr, client_events[n].data.fd, cefd);
-        // }
-      }
-    }
-  }
-
-  pthread_t process_accept_events;
-  pthread_t process_data_events;
-
-  pthread_create(&process_accept_events, NULL, handle_incoming_connx, NULL);
-  pthread_create(&process_data_events, NULL, handle_incoming_data, NULL);
-
   for (;;) {
-    // server loop
+    if ((num_ready_events = epoll_wait(efd, events, MAX_EVENTS, -1)) == -1) {
+      fprintf(stderr, "error: epoll_wait on server fd %s\n", strerror(errno));
+      // strace causes EINTR on epoll_wait
+      if (errno == EINTR)
+        continue;
+      server_shutdown(sfd, efd);
+      exit(1);
+    }
+
+    for (int n = 0; n < num_ready_events; n++) {
+      if (events[n].events & EPOLLRDHUP) {
+        close(events[n].data.fd);
+        continue;
+      }
+
+      if (events[n].data.fd == sfd) {
+        drain_accept_queue(sfd, efd, cev, conn_mgr, client, &cl);
+      } else {
+        // if (!connection_error(client_events[n].data.fd, cefd)) {
+        handle_conn(conn_mgr, events[n].data.fd, efd);
+      }
+    }
   }
 
   if (close(sfd) == -1) {
