@@ -1,19 +1,20 @@
 #include "parser.h"
 #include "hash_table.h"
 #include <ctype.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 void static http_parser_tokenize_byte_stream(stream_token_t *stream,
-                                             char *input, size_t slen) {
+                                             uint8_t *input, size_t slen) {
 
   if (slen > MAX_INCOMING_STREAM_SIZE) {
     printf("stream too large!\n");
     exit(1);
   }
 
-  for (int i = 0; i < slen; i++) {
+  for (int32_t i = 0; i < slen; i++) {
     stream_token_t token;
     if (isalpha(input[i])) {
       token.val = input[i];
@@ -63,7 +64,7 @@ void static http_parser_tokenize_request_stream(stream_token_t *stream,
   // enum needed to set array size
   enum { MAX_HEADER_BUF = MAX_HEADER_BUF_SIZE };
 
-  int idx = 0;
+  int32_t idx = 0;
   semantic_token_t *semantic_token =
       (semantic_token_t *)malloc(sizeof(semantic_token_t) * TOKEN_COUNT);
 
@@ -71,7 +72,7 @@ void static http_parser_tokenize_request_stream(stream_token_t *stream,
 
   ht_hash_table *ht = ht_new();
 
-  for (int i = 0; i < token_count; i++) {
+  for (int32_t i = 0; i < token_count; i++) {
     stream_token_t current_token = stream[i];
 
     switch (state) {
@@ -125,12 +126,12 @@ void static http_parser_tokenize_request_stream(stream_token_t *stream,
                  stream[i + 2].type == CARRIAGE &&
                  stream[i + 3].type == NEWLINE) {
 
-        char key[MAX_HEADER_BUF] = {0};
-        char val[MAX_HEADER_BUF] = {0};
-        char *headers = semantic_token[HEADERS].val;
-        int j = 0; // overall pos in headers
-        int k = 0;
-        int v = 0;
+        uint8_t key[MAX_HEADER_BUF] = {0};
+        uint8_t val[MAX_HEADER_BUF] = {0};
+        uint8_t *headers = semantic_token[HEADERS].val;
+        int32_t j = 0; // overall pos in headers
+        int32_t k = 0;
+        int32_t v = 0;
 
         // assumes the correct data is sent
         while (headers[j] != '\0') {
@@ -196,7 +197,7 @@ void static http_parser_tokenize_request_stream(stream_token_t *stream,
 }
 
 // return some high level parsed object that'll fit in a request context
-void _parser_parse_http_request(char *bytes) {
+void _parser_parse_http_request(uint8_t *bytes) {
   size_t token_count = strlen(bytes);
   stream_token_t *token_stream =
       (stream_token_t *)malloc(sizeof(stream_token_t) * token_count);
@@ -218,7 +219,7 @@ void _parser_parse_http_request(char *bytes) {
 //   // example:
 //   //
 //   https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_servers#client_handshake_request
-//   char *req = "GET /chat HTTP/1.1\r\n"
+//   uint8_t *req = "GET /chat HTTP/1.1\r\n"
 //               "Host: example.com:8000\r\n"
 //               "Upgrade: websocket\r\n"
 //               "Connection: Upgrade\r\n"

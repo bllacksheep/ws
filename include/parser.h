@@ -1,9 +1,10 @@
 #ifndef _Parser_h
 #define _Parser_h
 
+#include <stdint.h>
 #include <sys/types.h>
 // not optimized
-//
+
 #define MAX_HEADER_BUF_SIZE 256
 #define MAX_SEMANTIC_TOKEN_BUF_SIZE 256
 #define MAX_INCOMING_STREAM_SIZE 512
@@ -30,25 +31,26 @@ typedef enum {
 } semantic_type_t;
 
 typedef struct {
-  char val;
+  uint8_t val;
   stream_type_t type;
 } stream_token_t;
 
 typedef struct {
-  char val[MAX_SEMANTIC_TOKEN_BUF_SIZE];
+  uint8_t val[MAX_SEMANTIC_TOKEN_BUF_SIZE];
   semantic_type_t type;
 } semantic_token_t;
 
 typedef struct {
-  char *headers;
+  uint8_t *headers;
 } headers_t;
 
 typedef struct {
-  char *data;
+  uint8_t *data;
 } body_t;
 
-void static http_parser_tokenize_byte_stream(stream_token_t *, char *, size_t);
+void static http_parser_tokenize_byte_stream(stream_token_t *, uint8_t *,
+                                             size_t);
 void static http_parser_tokenize_request_stream(stream_token_t *, size_t);
-void _parser_parse_http_request(char *);
+void _parser_parse_http_request(uint8_t *);
 
 #endif

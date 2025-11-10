@@ -1,31 +1,33 @@
 #ifndef _HTTP_h
 #define _HTTP_h
 
+#include <stdint.h>
+
 #define MAX_REQ_SIZE 1024
 #define ENDPOINT "/chat"
 
 // no "update" api so const should be fine
 typedef struct {
-  const char *key;
-  const char *value;
+  const uint8_t *key;
+  const uint8_t *value;
 } header_item_t;
 
 typedef struct {
-  int size;
-  int count;
+  int32_t size;
+  int32_t count;
   header_item_t **headers;
 } ws_headers_t;
 
 typedef struct {
-  const char *request_line;
-  const char *request_headers;
-  const char *request_body;
+  const uint8_t *request_line;
+  const uint8_t *request_headers;
+  const uint8_t *request_body;
   const unsigned int is_http;
 } raw_req_t;
 
 typedef struct {
-  char *body;
-  const unsigned int length;
+  uint8_t *body;
+  const uint32_t length;
 } http_body_t;
 
 typedef enum {
@@ -36,18 +38,18 @@ typedef enum {
 
 typedef struct {
   const method_t request_method;
-  const char *request_uri;
-  const char *request_version;
+  const uint8_t *request_uri;
+  const uint8_t *request_version;
   ws_headers_t *request_headers;
   http_body_t *request_body;
 } req_t;
 
 typedef struct {
-  const char *name;
+  const uint8_t *name;
   const method_t method;
 } method_map_t;
 
-const char *http_handle_raw_request_stream(const char *, int);
-const char *http_parse_request(const char *);
+const uint8_t *http_handle_raw_request_stream(const uint8_t *, int32_t);
+const uint8_t *http_parse_request(const uint8_t *);
 
 #endif
