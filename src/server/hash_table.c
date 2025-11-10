@@ -1,13 +1,14 @@
 #include "hash_table.h"
 #include <math.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-static ht_item *ht_new_item(const char *k, const char *v) {
+static ht_item *ht_new_item(const uint8_t *k, const uint8_t *v) {
   ht_item *i = malloc(sizeof(ht_item));
-  i->key = strdup(k);
-  i->value = strdup(v);
+  i->key = (uint8_t *)strdup((const char *)k);
+  i->value = (uint8_t *)strdup((const char *)v);
   return i;
 }
 
@@ -38,28 +39,28 @@ void ht_del_hash_table(ht_hash_table *ht) {
   free(ht);
 }
 
-static int ht_hash(const char *s, const int a, const int m) {
-  long hash = 0;
-  const int len_s = strlen(s);
-  for (int i = 0; i < len_s; i++) {
-    hash += (long)pow(a, len_s - (i + 1)) * s[i];
+static int32_t ht_hash(const uint8_t *s, const int32_t a, const int32_t m) {
+  int64_t hash = 0;
+  const int32_t len_s = strlen((const char *)s);
+  for (int32_t i = 0; i < len_s; i++) {
+    hash += (int64_t)pow(a, len_s - (i + 1)) * s[i];
     hash = hash % m;
   }
-  return (int)hash;
+  return (int32_t)hash;
 }
 
-static int ht_get_hash(const char *s, const int num_buckets,
-                       const int attempt) {
-  const int hash_a = ht_hash(s, HT_PRIME_1, num_buckets);
-  const int hash_b = ht_hash(s, HT_PRIME_2, num_buckets);
+static int32_t ht_get_hash(const uint8_t *s, const int32_t num_buckets,
+                           const int32_t attempt) {
+  const int32_t hash_a = ht_hash(s, HT_PRIME_1, num_buckets);
+  const int32_t hash_b = ht_hash(s, HT_PRIME_2, num_buckets);
   return (hash_a + (attempt * (hash_b + 1))) % num_buckets;
 }
 
-void ht_insert(ht_hash_table *ht, const char *key, const char *value) {
+void ht_insert(ht_hash_table *ht, const uint8_t *key, const uint8_t *value) {
   ht_item *item = ht_new_item(key, value);
-  int index = ht_get_hash(item->key, ht->size, 0);
+  int32_t index = ht_get_hash(item->key, ht->size, 0);
   ht_item *cur_item = ht->items[index];
-  int i = 1;
+  int32_t i = 1;
   while (cur_item != NULL) {
     index = ht_get_hash(item->key, ht->size, i);
     cur_item = ht->items[index];

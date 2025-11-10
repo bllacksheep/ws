@@ -48,9 +48,12 @@ typedef struct {
   uint8_t *data;
 } body_t;
 
-void static http_parser_tokenize_byte_stream(stream_token_t *, uint8_t *,
-                                             size_t);
-void static http_parser_tokenize_request_stream(stream_token_t *, size_t);
-void _parser_parse_http_request(uint8_t *);
+static void parser_parse_http_byte_stream(stream_token_t *, const uint8_t *,
+                                          size_t);
+
+static semantic_token_t *parser_parse_http_req_semantics(stream_token_t *,
+                                                         size_t);
+
+void _parser_parse_http_request(const uint8_t *);
 
 #endif
