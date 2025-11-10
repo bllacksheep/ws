@@ -48,6 +48,7 @@ static void parser_parse_http_byte_stream(stream_token_t *stream,
   }
 }
 
+// TODO: need to wrap semantic_token and headers in new object and return it
 static semantic_token_t *parser_parse_http_req_semantics(stream_token_t *stream,
                                                          size_t token_count) {
   enum {
@@ -188,6 +189,8 @@ static semantic_token_t *parser_parse_http_req_semantics(stream_token_t *stream,
   return semantic_token;
 }
 
+// TODO: headers object needs to be the hash table
+// build this up in the parse function above and have it returned
 typedef struct {
   uint8_t **method;
   uint8_t **path;
@@ -196,33 +199,20 @@ typedef struct {
   uint8_t **body;
 } req_t;
 
+// printf("method: %s is_method: %d\n", semantic_token[METHOD].val,
+//        semantic_token[METHOD].type == METHOD);
+// printf("path: %s is_path: %d\n", semantic_token[PATH].val,
+//        semantic_token[PATH].type == PATH);
+// printf("version: %s is_version: %d\n", semantic_token[VERSION].val,
+//        semantic_token[VERSION].type == VERSION);
+// printf("headers: %s is_headers: %d\n", semantic_token[HEADERS].val,
+//        semantic_token[HEADERS].type == HEADERS);
+// printf("body: %s is_body: %d\n", semantic_token[BODY].val,
+//        semantic_token[BODY].type == BODY);
+
 // move http req_t to ctx_t with a req_t inside
-static req_t *fn(stream_token_t *tst, size_t cnt) {
-  semantic_token_t *req = parser_parse_http_req_semantics(tst, cnt);
-
-  // printf("method: %s is_method: %d\n", semantic_token[METHOD].val,
-  //        semantic_token[METHOD].type == METHOD);
-  // printf("path: %s is_path: %d\n", semantic_token[PATH].val,
-  //        semantic_token[PATH].type == PATH);
-  // printf("version: %s is_version: %d\n", semantic_token[VERSION].val,
-  //        semantic_token[VERSION].type == VERSION);
-  // printf("headers: %s is_headers: %d\n", semantic_token[HEADERS].val,
-  //        semantic_token[HEADERS].type == HEADERS);
-  // printf("body: %s is_body: %d\n", semantic_token[BODY].val,
-  //        semantic_token[BODY].type == BODY);
-  req_t *request = malloc(sizeof(req_t));
-
-  request->method = req[METHOD].val;
-  request->path = req[PATH].val;
-  request->version = req[VERSION].val;
-  request->headers = req[HEADERS].val;
-  request->body = req[BODY].val;
-
-  return request;
-}
-
 // return some high level parsed object that'll fit in a request context
-void _parser_parse_http_request(const uint8_t *bytes) {
+req_t _parser_parse_http_request(const uint8_t *bytes) {
   size_t token_count = strlen((const char *)bytes);
   stream_token_t *token_stream =
       (stream_token_t *)malloc(sizeof(stream_token_t) * token_count);
@@ -231,7 +221,7 @@ void _parser_parse_http_request(const uint8_t *bytes) {
     exit(1);
   }
   parser_parse_http_byte_stream(token_stream, bytes, token_count);
-  return parser_parsed_request(token_stream, token_count);
+  return parser_parse_http_req_semantics(token_stream, token_count);
 }
 
 // int main() {

@@ -54,6 +54,6 @@ static void parser_parse_http_byte_stream(stream_token_t *, const uint8_t *,
 static semantic_token_t *parser_parse_http_req_semantics(stream_token_t *,
                                                          size_t);
 
-void _parser_parse_http_request(const uint8_t *);
+req_t *_parser_parse_http_request(const uint8_t *);
 
 #endif
