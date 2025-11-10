@@ -1,9 +1,54 @@
-#ifndef _Lexer_h
-#define _Lexer_h
+#ifndef _Parser_h
+#define _Parser_h
 
+#include <sys/types.h>
 // not optimized
+//
 #define MAX_HEADER_BUF_SIZE 256
 #define MAX_SEMANTIC_TOKEN_BUF_SIZE 256
 #define MAX_INCOMING_STREAM_SIZE 512
+
+typedef enum {
+  CHAR,
+  NUM,
+  SPACE,
+  SLASH,
+  CARRIAGE,
+  NEWLINE,
+  SPECIAL,
+  DOT,
+  COLON,
+} stream_type_t;
+
+typedef enum {
+  METHOD,
+  PATH,
+  VERSION,
+  HEADERS,
+  BODY,
+  TOKEN_COUNT
+} semantic_type_t;
+
+typedef struct {
+  char val;
+  stream_type_t type;
+} stream_token_t;
+
+typedef struct {
+  char val[MAX_SEMANTIC_TOKEN_BUF_SIZE];
+  semantic_type_t type;
+} semantic_token_t;
+
+typedef struct {
+  char *headers;
+} headers_t;
+
+typedef struct {
+  char *data;
+} body_t;
+
+void static http_parser_tokenize_byte_stream(stream_token_t *, char *, size_t);
+void static http_parser_tokenize_request_stream(stream_token_t *, size_t);
+void _parser_parse_http_request(char *);
 
 #endif

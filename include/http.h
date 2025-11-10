@@ -48,5 +48,6 @@ typedef struct {
 } method_map_t;
 
 const char *http_handle_raw_request_stream(const char *, int);
+const char *http_parse_request(const char *);
 
 #endif

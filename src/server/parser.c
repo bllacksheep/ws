@@ -5,46 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef enum {
-  CHAR,
-  NUM,
-  SPACE,
-  SLASH,
-  CARRIAGE,
-  NEWLINE,
-  SPECIAL,
-  DOT,
-  COLON,
-} stream_type_t;
-
-typedef enum {
-  METHOD,
-  PATH,
-  VERSION,
-  HEADERS,
-  BODY,
-  TOKEN_COUNT
-} semantic_type_t;
-
-typedef struct {
-  char val;
-  stream_type_t type;
-} stream_token_t;
-
-typedef struct {
-  char val[MAX_SEMANTIC_TOKEN_BUF_SIZE];
-  semantic_type_t type;
-} semantic_token_t;
-
-typedef struct {
-  char *headers;
-} headers_t;
-
-typedef struct {
-  char *data;
-} body_t;
-
-void tokenize_request_stream(stream_token_t *stream, char *input, size_t slen) {
+void static http_parser_tokenize_byte_stream(stream_token_t *stream,
+                                             char *input, size_t slen) {
 
   if (slen > MAX_INCOMING_STREAM_SIZE) {
     printf("stream too large!\n");
@@ -85,7 +47,8 @@ void tokenize_request_stream(stream_token_t *stream, char *input, size_t slen) {
   }
 }
 
-void tokenize_http_request(stream_token_t *stream, size_t token_count) {
+void static http_parser_tokenize_request_stream(stream_token_t *stream,
+                                                size_t token_count) {
   enum {
     IDLE,
     METHOD_STATE,
@@ -230,6 +193,24 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
          semantic_token[HEADERS].type == HEADERS);
   printf("body: %s is_body: %d\n", semantic_token[BODY].val,
          semantic_token[BODY].type == BODY);
+}
+
+// return some high level parsed object that'll fit in a request context
+void _parser_parse_http_request(char *bytes) {
+  size_t token_count = strlen(bytes);
+  stream_token_t *token_stream =
+      (stream_token_t *)malloc(sizeof(stream_token_t) * token_count);
+  //
+  if (!token_stream) {
+    printf("never cross the streams!\n");
+    exit(1);
+  }
+
+  http_parser_tokenize_byte_stream(token_stream, bytes, token_count);
+  //
+  //   reflect(tstream, token_count);
+  //
+  //   tokenize_http_request(tstream, token_count);
 }
 
 // int main() {

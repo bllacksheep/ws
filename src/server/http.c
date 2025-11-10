@@ -127,6 +127,10 @@ const char *_200_ok = "HTTP/1.1 200 OK\r\n"
                       "Content-Type: text/plain\r\n"
                       "Connection: keep-alive\r\n\r\n";
 
+const char *http_parse_request(const char *stream) {
+  _parser_parse_request(stream);
+}
+
 // handler returning response string
 const char *http_handle_raw_request_stream(const char *raw_req_buf,
                                            int raw_buf_len) {
@@ -134,15 +138,7 @@ const char *http_handle_raw_request_stream(const char *raw_req_buf,
     return NULL;
   }
 
-  //   stream_token_t *tstream =
-  //       (stream_token_t *)malloc(sizeof(stream_token_t) * token_count);
-  //
-  //   if (!tstream) {
-  //     printf("bad stream\n");
-  //     exit(1);
-  //   }
-  //   tokenize_request_stream(tstream, req, token_count);
-  //   tokenize_http_request(tstream, token_count);
+  http_parse_request(raw_req_buf);
 
   req_t req = parser_basic(raw_req_buf, raw_buf_len);
 
