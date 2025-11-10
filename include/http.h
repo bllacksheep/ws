@@ -47,6 +47,6 @@ typedef struct {
   const method_t method;
 } method_map_t;
 
-const char *handle_http_request_stream(const char *, int);
+const char *http_handle_raw_request_stream(const char *, int);
 
 #endif

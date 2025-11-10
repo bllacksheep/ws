@@ -1,4 +1,5 @@
 #include "http.h"
+#include "parser.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -119,7 +120,6 @@ const char *_400_bad_request = "\n\nHTTP/1.1 400 Bad Request\r\n"
                                "Content-Length: 13\r\n\r\n"
                                "That Ain't It\n";
 
-
 const char *_200_ok = "HTTP/1.1 200 OK\r\n"
                       "Server: server/0.0.0 (Ubuntu)\r\n"
                       "Content-Length: 0\r\n"
@@ -128,11 +128,21 @@ const char *_200_ok = "HTTP/1.1 200 OK\r\n"
                       "Connection: keep-alive\r\n\r\n";
 
 // handler returning response string
-const char *handle_http_request_stream(const char *raw_req_buf,
-                                       int raw_buf_len) {
+const char *http_handle_raw_request_stream(const char *raw_req_buf,
+                                           int raw_buf_len) {
   if (raw_req_buf == NULL || raw_buf_len >= MAX_REQ_SIZE) {
     return NULL;
   }
+
+  //   stream_token_t *tstream =
+  //       (stream_token_t *)malloc(sizeof(stream_token_t) * token_count);
+  //
+  //   if (!tstream) {
+  //     printf("bad stream\n");
+  //     exit(1);
+  //   }
+  //   tokenize_request_stream(tstream, req, token_count);
+  //   tokenize_http_request(tstream, token_count);
 
   req_t req = parser_basic(raw_req_buf, raw_buf_len);
 
