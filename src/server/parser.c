@@ -71,6 +71,8 @@ static raw_request_t *parser_parse_http_req_semantics(stream_token_t *stream,
   memset(semantic_token, 0, sizeof(semantic_token_t) * TOKEN_COUNT);
 
   ht_hash_table *ht = ht_new();
+  // this should be on the heap, freed
+  raw_request_t *req;
 
   for (int32_t i = 0; i < token_count; i++) {
     stream_token_t current_token = stream[i];
@@ -86,6 +88,7 @@ static raw_request_t *parser_parse_http_req_semantics(stream_token_t *stream,
       semantic_token[METHOD].type = METHOD;
       if (current_token.type == CHAR) {
         semantic_token[METHOD].val[idx++] = current_token.val;
+        // req->method = validate_method(semantic_token[METHOD].val);
       } else if (current_token.type == SPACE) {
         state = PATH_STATE;
         // reset val writer
@@ -96,6 +99,7 @@ static raw_request_t *parser_parse_http_req_semantics(stream_token_t *stream,
       semantic_token[PATH].type = PATH;
       if (current_token.type == SLASH || current_token.type == CHAR) {
         semantic_token[PATH].val[idx++] = current_token.val;
+        // req->path = validate_path(semantic_token[PATH].val);
       } else if (current_token.type == SPACE) {
         state = VERSION_STATE;
         idx = 0;
@@ -106,6 +110,7 @@ static raw_request_t *parser_parse_http_req_semantics(stream_token_t *stream,
       if (current_token.type == CHAR || current_token.type == SLASH ||
           current_token.type == NUM || current_token.type == DOT) {
         semantic_token[VERSION].val[idx++] = current_token.val;
+        // req->version = validate_version(semantic_token[VERSION].val);
       } else if (current_token.type == CARRIAGE &&
                  stream[i + 1].type == NEWLINE) {
         state = HEADER_STATE;
@@ -158,16 +163,14 @@ static raw_request_t *parser_parse_http_req_semantics(stream_token_t *stream,
           memset(val, 0, MAX_HEADER_BUF);
           v = k = 0;
         }
-
         // ht_del_hash_table(ht);
-
+        // req->headers = validate_headers(ht);
         state = BODY_STATE;
         idx = 0;
       } else if (current_token.type == CARRIAGE &&
                  stream[i + 1].type == NEWLINE) {
         semantic_token[HEADERS].val[idx++] = ' ';
       }
-
       break;
     case BODY_STATE:
       // depends on headers being accessible via hashmap
@@ -185,8 +188,6 @@ static raw_request_t *parser_parse_http_req_semantics(stream_token_t *stream,
     }
   }
 
-  raw_request_t *req;
-
   req->method = semantic_token[METHOD].val;
   req->path = semantic_token[PATH].val;
   req->version = semantic_token[VERSION].val;
@@ -196,55 +197,14 @@ static raw_request_t *parser_parse_http_req_semantics(stream_token_t *stream,
   return req;
 }
 
-// printf("method: %s is_method: %d\n", semantic_token[METHOD].val,
-//        semantic_token[METHOD].type == METHOD);
-// printf("path: %s is_path: %d\n", semantic_token[PATH].val,
-//        semantic_token[PATH].type == PATH);
-// printf("version: %s is_version: %d\n", semantic_token[VERSION].val,
-//        semantic_token[VERSION].type == VERSION);
-// printf("headers: %s is_headers: %d\n", semantic_token[HEADERS].val,
-//        semantic_token[HEADERS].type == HEADERS);
-// printf("body: %s is_body: %d\n", semantic_token[BODY].val,
-//        semantic_token[BODY].type == BODY);
-
-// move http req_t to ctx_t with a req_t inside
-// return some high level parsed object that'll fit in a request context
-raw_request_t *parser_parse_http_request(const uint8_t *bytes) {
-  size_t token_count = strlen((const char *)bytes);
+raw_request_t *parser_parse_http_request(const uint8_t *byte_stream) {
+  size_t token_count = strlen((const char *)byte_stream);
   stream_token_t *token_stream =
       (stream_token_t *)malloc(sizeof(stream_token_t) * token_count);
   if (!token_stream) {
     printf("never cross the streams!\n");
     exit(1);
   }
-  parser_parse_http_byte_stream(token_stream, bytes, token_count);
+  parser_parse_http_byte_stream(token_stream, byte_stream, token_count);
   return parser_parse_http_req_semantics(token_stream, token_count);
 }
-
-// int main() {
-//
-//   // example:
-//   //
-//   https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_servers#client_handshake_request
-//   uint8_t *req = "GET /chat HTTP/1.1\r\n"
-//               "Host: example.com:8000\r\n"
-//               "Upgrade: websocket\r\n"
-//               "Connection: Upgrade\r\n"
-//               "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
-//               "Sec-WebSocket-Version: 13\r\n\r\n";
-//
-//   size_t token_count = strlen(req);
-//   stream_token_t *tstream =
-//       (stream_token_t *)malloc(sizeof(stream_token_t) * token_count);
-//
-//   if (!tstream) {
-//     printf("bad stream\n");
-//     exit(1);
-//   }
-//
-//   tokenize_request_stream(tstream, req, token_count);
-//
-//   reflect(tstream, token_count);
-//
-//   tokenize_http_request(tstream, token_count);
-// }

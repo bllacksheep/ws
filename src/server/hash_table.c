@@ -68,5 +68,5 @@ void ht_insert(ht_hash_table *ht, const uint8_t *key, const uint8_t *value) {
   }
   ht->items[index] = item;
   ht->count++;
-  printf("k: %s, i: %d, v: %s\n", key, index, value);
+  // printf("k: %s, i: %d, v: %s\n", key, index, value);
 }
