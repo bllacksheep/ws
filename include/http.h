@@ -1,7 +1,7 @@
 #ifndef _HTTP_h
 #define _HTTP_h
 
-#include "hash_table.h"
+#include "parser.h"
 #include <stdint.h>
 
 #define MAX_REQ_SIZE 1024
@@ -49,14 +49,6 @@ typedef struct {
   const uint8_t *name;
   const method_t method;
 } method_map_t;
-
-typedef struct {
-  uint8_t *method;
-  uint8_t *path;
-  uint8_t *version;
-  ht_hash_table *headers;
-  uint8_t *body;
-} raw_request_t;
 
 typedef struct {
   raw_request_t *request;
