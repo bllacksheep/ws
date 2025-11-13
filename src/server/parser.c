@@ -48,9 +48,8 @@ static void parser_parse_http_byte_stream(stream_token_t *stream,
   }
 }
 
-// TODO: need to wrap semantic_token and headers in new object and return it
-static semantic_token_t *parser_parse_http_req_semantics(stream_token_t *stream,
-                                                         size_t token_count) {
+static raw_request_t *parser_parse_http_req_semantics(stream_token_t *stream,
+                                                      size_t token_count) {
   enum {
     IDLE,
     METHOD_STATE,
@@ -186,18 +185,16 @@ static semantic_token_t *parser_parse_http_req_semantics(stream_token_t *stream,
     }
   }
 
-  return semantic_token;
-}
+  raw_request_t *req;
 
-// TODO: headers object needs to be the hash table
-// build this up in the parse function above and have it returned
-typedef struct {
-  uint8_t **method;
-  uint8_t **path;
-  uint8_t **version;
-  uint8_t headers;
-  uint8_t **body;
-} req_t;
+  req->method = semantic_token[METHOD].val;
+  req->path = semantic_token[PATH].val;
+  req->version = semantic_token[VERSION].val;
+  req->headers = ht;
+  req->body = semantic_token[BODY].val;
+
+  return req;
+}
 
 // printf("method: %s is_method: %d\n", semantic_token[METHOD].val,
 //        semantic_token[METHOD].type == METHOD);
@@ -212,7 +209,7 @@ typedef struct {
 
 // move http req_t to ctx_t with a req_t inside
 // return some high level parsed object that'll fit in a request context
-req_t _parser_parse_http_request(const uint8_t *bytes) {
+raw_request_t *parser_parse_http_request(const uint8_t *bytes) {
   size_t token_count = strlen((const char *)bytes);
   stream_token_t *token_stream =
       (stream_token_t *)malloc(sizeof(stream_token_t) * token_count);

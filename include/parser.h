@@ -1,6 +1,7 @@
 #ifndef _Parser_h
 #define _Parser_h
 
+#include "hash_table.h"
 #include <stdint.h>
 #include <sys/types.h>
 // not optimized
@@ -48,12 +49,16 @@ typedef struct {
   uint8_t *data;
 } body_t;
 
+typedef struct {
+  uint8_t *method;
+  uint8_t *path;
+  uint8_t *version;
+  ht_hash_table *headers;
+  uint8_t *body;
+} raw_request_t;
+
 static void parser_parse_http_byte_stream(stream_token_t *, const uint8_t *,
                                           size_t);
-
-static semantic_token_t *parser_parse_http_req_semantics(stream_token_t *,
-                                                         size_t);
-
-req_t *_parser_parse_http_request(const uint8_t *);
-
+static raw_request_t *parser_parse_http_req_semantics(stream_token_t *, size_t);
+raw_request_t *parser_parse_http_request(const uint8_t *);
 #endif
