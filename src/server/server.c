@@ -46,6 +46,8 @@ void handle_pending_connx(conn_manager_t *cm, unsigned int cfd,
      * use the parsed input to build a context or return error
      * */
 
+    // currently getting context from handler
+    // I might pass this in, instead
     // assign context to connection
     const req_ctx_t *ctx = http_handle_raw_request_stream(
         (uint8_t *)cm->conn[cfd]->buf, bytes_read);
