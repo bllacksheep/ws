@@ -1,6 +1,4 @@
 // rfc 6455
-#include <stdlib.h>
-#include <string.h>
 
 #ifndef _WS_SERVER_h
 #define _WS_SERVER_h

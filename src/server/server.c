@@ -9,6 +9,7 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <pthread.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -46,15 +47,13 @@ void handle_pending_connx(conn_manager_t *cm, unsigned int cfd,
      * */
 
     // assign context to connection
-    const char *http_response_stream =
-        http_handle_raw_request_stream(cm->conn[cfd]->buf, bytes_read);
-    // const char *http_response_stream =
-    //     handle_http_request_stream(http_request_stream, bytes_read);
+    const req_ctx_t *ctx = http_handle_raw_request_stream(
+        (uint8_t *)cm->conn[cfd]->buf, bytes_read);
 
     // partial write handling to be implemented
-    size_t n = strlen(http_response_stream);
+    size_t n = strlen((char *)ctx->response);
     if (n > 0) {
-      ssize_t bytes_written = write(cfd, http_response_stream, n);
+      ssize_t bytes_written = write(cfd, ctx->response, n);
       if (bytes_written == -1) {
         fprintf(stderr, "error: write failed on fd: %d, %s\n", cfd,
                 strerror(errno));
