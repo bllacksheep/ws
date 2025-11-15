@@ -1,4 +1,5 @@
 #include "http.h"
+#include "ctx.h"
 #include <parser.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,12 +38,10 @@ req_ctx_t *http_parse_request(const uint8_t *stream) {
   return rctx;
 }
 
-const req_ctx_t *http_handle_raw_request_stream(const uint8_t *raw_req_buf,
-                                                int32_t raw_buf_len) {
-  if (raw_req_buf == NULL || raw_buf_len >= MAX_REQ_SIZE) {
-    return NULL;
+void http_handle_raw_request_stream(ctx_t *ctx) {
+  if (ctx->buf == NULL || (int)ctx->len >= MAX_REQ_SIZE) {
+    exit(1);
   }
-  req_ctx_t *ctx = malloc(sizeof(req_ctx_t));
   ctx = http_parse_request(raw_req_buf);
 
   if (ctx->request->method == UNKNOWN) {

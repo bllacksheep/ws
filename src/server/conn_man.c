@@ -1,41 +1,63 @@
 #include "conn_man.h"
+#include "ctx.h"
 
-conn_manager_t *connection_manager_create() {
-  conn_manager_t *cm = (conn_manager_t *)malloc(sizeof(conn_manager_t));
+#define CNX_MANAGER_BYTE_STREAM_IN 1024
+
+cnx_manager_t *cnx_manager_create() {
+  cnx_manager_t *cm = (cnx_manager_t *)malloc(sizeof(cnx_manager_t));
   if (cm == NULL) {
     // handle
   }
   // initial capacity
-  cm->conn =
-      (conn_ctx_t **)malloc(sizeof(conn_ctx_t *) * CONN_MANAGER_CONN_POOL);
+  cm->cnx = (ctx_t **)malloc(sizeof(ctx_t *) * CNX_MANAGER_CONN_POOL);
 
-  for (int i = 0; i < CONN_MANAGER_CONN_POOL; i++) {
-    conn_ctx_t *conn = (conn_ctx_t *)malloc(sizeof(conn_ctx_t));
-    if (conn != NULL) {
-      memset(conn, 0, sizeof(conn_ctx_t));
+  for (int i = 0; i < CNX_MANAGER_CONN_POOL; i++) {
+    ctx_t *cnx = (ctx_t *)malloc(sizeof(ctx_t));
+    if (cnx != NULL) {
+      memset(cnx, 0, sizeof(ctx_t));
     }
-    cm->conn[i] = conn;
+    cnx->buf = (uint8_t *)malloc(sizeof(uint8_t) * CNX_MANAGER_BYTE_STREAM_IN);
+    if (cnx->buf == NULL) {
+      // handle
+    }
+    cnx->http = (http_t *)malloc(sizeof(http_t));
+    if (cnx->http == NULL) {
+      // handle
+    }
+    cnx->http->request = (http_request_t *)malloc(sizeof(http_request_t));
+    if (cnx->http->request == NULL) {
+      // handle
+    }
+    cnx->http->request->path = NULL;
+    cnx->http->request->version = NULL;
+    cnx->http->request->headers = NULL;
+    cnx->http->request->body = NULL;
+    cnx->http->response = (http_response_t *)malloc(sizeof(http_response_t));
+    if (cnx->http->response == NULL) {
+      // handle
+    }
+    cm->cnx[i] = cnx;
   }
   cm->len = 0;
-  cm->cap = CONN_MANAGER_CONN_POOL;
+  cm->cap = CNX_MANAGER_CONN_POOL;
   cm->allocated = 0;
   return cm;
 }
 
-static void connection_manager_add(conn_manager_t *cm, int cfd) {
-  if (cm->allocated >= CONN_MANAGER_DEALLOC_THRESHOLD) {
+static void cnx_manager_add(cnx_manager_t *cm, int cfd) {
+  if (cm->allocated >= CNX_MANAGER_DEALLOC_THRESHOLD) {
     // run in its own thread
     // run cleanup on pool
-    // need connection state to be present
+    // need cnx state to be present
 
     /*
      * responsed means it's done, but keep-alive by default
      * close means it can be removed
      * higher level http status means nothing unless close set
-     * so persistent connections can't be cleaned up if still 'managed'
+     * so persistent cnxs can't be cleaned up if still 'managed'
      * meaning realloc is likely unaviodable
      * timeout will have to be set in order to balance performance
-     * add idle / stale to conn_ctx_t
+     * add idle / stale to cnx_ctx_t
      * i.e. persistent but inactive
      * 30s inactive timeout
      *
@@ -46,24 +68,24 @@ static void connection_manager_add(conn_manager_t *cm, int cfd) {
   }
   // if (cm->len >= cm->cap / 2) {
   //   cm->cap *= 2;
-  //   cm->conn = (conn_ctx_t **)realloc(cm->conn, sizeof(conn_ctx_t *) *
+  //   cm->cnx = (cnx_ctx_t **)realloc(cm->cnx, sizeof(cnx_ctx_t *) *
   //   cm->cap);
   // }
 
-  //   memset(conn, 0, sizeof(conn_ctx_t));
+  //   memset(cnx, 0, sizeof(cnx_ctx_t));
   // }
-  cm->conn[cfd]->fd = cfd;
-  cm->conn[cfd]->reuse = CONN_KEEP_ALIVE;
+  cm->cnx[cfd]->fd = cfd;
+  cm->cnx[cfd]->reuse = KEEPALIVE;
   cm->len++;
   cm->allocated++;
 }
 
-void connection_manager_track(conn_manager_t *cm, int cfd) {
-  // check the conn and it's status
-  connection_manager_add(cm, cfd);
+void cnx_manager_track(cnx_manager_t *cm, int cfd) {
+  // check the cnx and it's status
+  cnx_manager_add(cm, cfd);
 }
 
-// releases connection
-void connection_manager_remove(conn_manager_t *cm, int cfd) {}
-// fetches connection
-// conn_ctx_t *connection_manager_get(conn_manager_t *cm, int cfd) {}
+// releases cnx
+void cnx_manager_remove(cnx_manager_t *cm, int cfd) {}
+// fetches cnx
+// cnx_ctx_t *cnx_manager_get(cnx_manager_t *cm, int cfd) {}

@@ -19,10 +19,12 @@
 #include <unistd.h>
 // clean these up check bin size
 
-void handle_pending_connx(cxn_manager_t *cm, unsigned int cfd,
+void handle_pending_connx(cnx_manager_t *cm, unsigned int cfd,
                           unsigned int epfd) {
-  ssize_t bytes_read =
-      recvfrom(cfd, cm->cxn[cfd]->buf, MAX_REQ_SIZE, NULL, NULL, NULL);
+
+  ctx_t *ctx = cm->cnx[cfd];
+
+  ssize_t bytes_read = recvfrom(cfd, ctx->buf, MAX_REQ_SIZE, NULL, NULL, NULL);
   // TODO: if 0 clean up allocated resources
   if (bytes_read == 0) {
     // 0 EOF == tcp CLOSE_WAIT
@@ -46,17 +48,13 @@ void handle_pending_connx(cxn_manager_t *cm, unsigned int cfd,
      * http validation (supporting small subset)
      * use the parsed input to build a context or return error
      * */
-
-    // currently getting context from handler
-    // I might pass this in, instead
-    // assign context to connection
-    http_handle_raw_request_stream(cm->cxn[cfd]->ctx,
-                                   (uint8_t *)cm->cxn[cfd]->buf, bytes_read);
+    ctx->len = bytes_read;
+    http_handle_raw_request_stream(ctx);
 
     // partial write handling to be implemented
-    size_t n = strlen((char *)ctx->response);
+    size_t n = strlen((char *)ctx->http->response);
     if (n > 0) {
-      ssize_t bytes_written = write(cfd, ctx->response, n);
+      ssize_t bytes_written = write(cfd, ctx->http->response, n);
       if (bytes_written == -1) {
         fprintf(stderr, "error: write failed on fd: %d, %s\n", cfd,
                 strerror(errno));
@@ -100,7 +98,7 @@ void static server_hangup(int server_fd, int epoll_fd) {
 
 void drain_tcp_accept_backlog(int server_fd, int epoll_fd,
                               struct epoll_event client_event,
-                              cxn_manager_t *cm, struct sockaddr_in client_addr,
+                              cnx_manager_t *cm, struct sockaddr_in client_addr,
                               socklen_t *client_addr_len) {
   int cfd;
   for (;;) {
@@ -118,7 +116,7 @@ void drain_tcp_accept_backlog(int server_fd, int epoll_fd,
         break;
       }
     }
-    cxn_manager_track(cm, cfd);
+    cnx_manager_track(cm, cfd);
     client_event.events = EPOLLIN | EPOLLRDHUP | EPOLLET;
     client_event.data.fd = cfd;
 
@@ -140,8 +138,8 @@ int main(int argc, char *argv[]) {
   char *address;
   in_port_t port;
 
-  cxn_manager_t *cxnmgr = cxn_manager_create();
-  if (cxnmgr == NULL) {
+  cnx_manager_t *cnxmgr = cnx_manager_create();
+  if (cnxmgr == NULL) {
     // handle
   }
 
@@ -239,9 +237,9 @@ int main(int argc, char *argv[]) {
         continue;
       }
       if (events[n].data.fd == sfd) {
-        drain_tcp_accept_backlog(sfd, efd, cev, cxnmgr, client, &cl);
+        drain_tcp_accept_backlog(sfd, efd, cev, cnxmgr, client, &cl);
       } else {
-        handle_pending_connx(cxnmgr, events[n].data.fd, efd);
+        handle_pending_connx(cnxmgr, events[n].data.fd, efd);
       }
     }
   }
