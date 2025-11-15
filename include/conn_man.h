@@ -1,37 +1,45 @@
 // rfc 6455
+
+#ifndef _CX_MAN_h
+#define _CX_MAN_h
+
+#include <ctx.h>
 #include <stdlib.h>
 #include <string.h>
 
-#ifndef _CONN_MAN_h
-#define _CONN_MAN_h
+#define CX_MANAGER_BYTE_STREAM_IN 1024
+#define CX_MANAGER_CONN_POOL 1024
+#define CX_MANAGER_DEALLOC_THRESHOLD 100
 
-#define CONN_MANAGER_BYTE_STREAM_IN 1024
-#define CONN_MANAGER_CONN_POOL 1024
-#define CONN_MANAGER_DEALLOC_THRESHOLD 100
+enum cxn_state { KEEPALIVE, CLOSE };
 
-enum conn_state { CONN_KEEP_ALIVE, CONN_CLOSE };
+typedef struct {
+  http_t *http;
+  ws_t *ws;
+} ctx_t;
 
 typedef struct {
   int fd;
-  char buf[CONN_MANAGER_BYTE_STREAM_IN];
-  enum conn_state reuse;
-} conn_ctx_t;
+  uint8_t *buf[CX_MANAGER_BYTE_STREAM_IN];
+  enum cxn_state reuse;
+  ctx_t ctx;
+} cxn_ctx_t;
 
 typedef struct {
-  conn_ctx_t **conn;
+  cxn_ctx_t **cxn;
   size_t len;
   size_t cap;
   size_t allocated;
-} conn_manager_t;
+} cxn_manager_t;
 
-conn_manager_t *connection_manager_create();
+cxn_manager_t *cxn_manager_create();
 // tracks connection
-static void connection_manager_add(conn_manager_t *cm, int cfd);
+static void cxn_manager_add(cxn_manager_t *cm, int cfd);
 // check state of conn add / remove as required
-void connection_manager_track(conn_manager_t *cm, int cfd);
+void cxn_manager_track(cxn_manager_t *cm, int cfd);
 // releases connection
-void connection_manager_remove(conn_manager_t *cm, int cfd);
+void cxn_manager_remove(cxn_manager_t *cm, int cfd);
 // fetches connection
-conn_ctx_t *connection_manager_get(conn_manager_t *cm, int cfd);
+cxn_ctx_t *cxn_manager_get(cxn_manager_t *cm, int cfd);
 
 #endif

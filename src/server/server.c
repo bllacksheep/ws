@@ -1,5 +1,6 @@
 #include "server.h"
 #include "conn_man.h"
+#include "ctx.h"
 #include "http.h"
 #include "ip.h"
 #include <arpa/inet.h>
@@ -18,10 +19,10 @@
 #include <unistd.h>
 // clean these up check bin size
 
-void handle_pending_connx(conn_manager_t *cm, unsigned int cfd,
+void handle_pending_connx(cxn_manager_t *cm, unsigned int cfd,
                           unsigned int epfd) {
   ssize_t bytes_read =
-      recvfrom(cfd, cm->conn[cfd]->buf, MAX_REQ_SIZE, NULL, NULL, NULL);
+      recvfrom(cfd, cm->cxn[cfd]->buf, MAX_REQ_SIZE, NULL, NULL, NULL);
   // TODO: if 0 clean up allocated resources
   if (bytes_read == 0) {
     // 0 EOF == tcp CLOSE_WAIT
@@ -49,8 +50,8 @@ void handle_pending_connx(conn_manager_t *cm, unsigned int cfd,
     // currently getting context from handler
     // I might pass this in, instead
     // assign context to connection
-    const req_ctx_t *ctx = http_handle_raw_request_stream(
-        (uint8_t *)cm->conn[cfd]->buf, bytes_read);
+    http_handle_raw_request_stream(cm->cxn[cfd]->ctx,
+                                   (uint8_t *)cm->cxn[cfd]->buf, bytes_read);
 
     // partial write handling to be implemented
     size_t n = strlen((char *)ctx->response);
@@ -99,8 +100,7 @@ void static server_hangup(int server_fd, int epoll_fd) {
 
 void drain_tcp_accept_backlog(int server_fd, int epoll_fd,
                               struct epoll_event client_event,
-                              conn_manager_t *connection_manager,
-                              struct sockaddr_in client_addr,
+                              cxn_manager_t *cm, struct sockaddr_in client_addr,
                               socklen_t *client_addr_len) {
   int cfd;
   for (;;) {
@@ -118,7 +118,7 @@ void drain_tcp_accept_backlog(int server_fd, int epoll_fd,
         break;
       }
     }
-    connection_manager_track(connection_manager, cfd);
+    cxn_manager_track(cm, cfd);
     client_event.events = EPOLLIN | EPOLLRDHUP | EPOLLET;
     client_event.data.fd = cfd;
 
@@ -140,8 +140,8 @@ int main(int argc, char *argv[]) {
   char *address;
   in_port_t port;
 
-  conn_manager_t *conn_mgr = connection_manager_create();
-  if (conn_mgr == NULL) {
+  cxn_manager_t *cxnmgr = cxn_manager_create();
+  if (cxnmgr == NULL) {
     // handle
   }
 
@@ -239,9 +239,9 @@ int main(int argc, char *argv[]) {
         continue;
       }
       if (events[n].data.fd == sfd) {
-        drain_tcp_accept_backlog(sfd, efd, cev, conn_mgr, client, &cl);
+        drain_tcp_accept_backlog(sfd, efd, cev, cxnmgr, client, &cl);
       } else {
-        handle_pending_connx(conn_mgr, events[n].data.fd, efd);
+        handle_pending_connx(cxnmgr, events[n].data.fd, efd);
       }
     }
   }
