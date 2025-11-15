@@ -8,7 +8,6 @@ cnx_manager_t *cnx_manager_create() {
   if (cm == NULL) {
     // handle
   }
-  // initial capacity
   cm->cnx = (ctx_t **)malloc(sizeof(ctx_t *) * CNX_MANAGER_CONN_POOL);
 
   for (int i = 0; i < CNX_MANAGER_CONN_POOL; i++) {
