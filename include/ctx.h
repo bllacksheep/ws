@@ -25,7 +25,7 @@ typedef struct {
 } http_request_t;
 
 typedef struct {
-  const uint8_t *response;
+  const uint8_t *buf;
 } http_response_t;
 
 typedef struct ws_t ws;

@@ -42,26 +42,22 @@ void http_handle_raw_request_stream(ctx_t *ctx) {
   if (ctx->buf == NULL || (int)ctx->len >= MAX_REQ_SIZE) {
     exit(1);
   }
-  ctx = http_parse_request(raw_req_buf);
+  http_parse_request(ctx->buf);
 
-  if (ctx->request->method == UNKNOWN) {
+  if (ctx->http->request->method == UNKNOWN) {
     fprintf(stderr, "error: initialize request line unknown payload\n");
-    ctx->response = _400_bad_request;
-    return ctx;
+    ctx->http->response->buf = _400_bad_request;
   }
 
-  if (check_path(ctx->request->path) != 0) {
+  if (check_path(ctx->http->request->path) != 0) {
     fprintf(stderr, "error: initialize request line uri expectet /chat\n");
-    ctx->response = _400_bad_request;
-    return ctx;
+    ctx->http->response->buf = _400_bad_request;
   }
 
-  if (*ctx->request->method != GET) {
+  if (ctx->http->request->method != GET) {
     fprintf(stderr, "error: initialize request line not GET method\n");
-    ctx->response = _405_method_not_allowed;
-    return ctx;
+    ctx->http->response->buf = _405_method_not_allowed;
   }
 
-  ctx->response = _200_ok;
-  return ctx;
+  ctx->http->response->buf = _200_ok;
 }
