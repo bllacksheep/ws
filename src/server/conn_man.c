@@ -51,6 +51,12 @@ static void cnx_manager_cnx_add(cnx_manager_t *cm, int cfd) {
     // handle
   }
 
+  cm->cnx[cfd]->http->request->body =
+      (http_body_t *)malloc(sizeof(http_body_t));
+  if (cm->cnx[cfd]->http->request->body == NULL) {
+    // handle
+  }
+
 // play values to be adjusted
 #define BODY_BUF_SIZE 1024
 
