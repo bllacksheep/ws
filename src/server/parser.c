@@ -49,6 +49,25 @@ static void parser_parse_http_byte_stream(stream_token_t *stream,
   }
 }
 
+static inline void validate_method(http_t *c, uint8_t *m) {
+
+  const char *http_request_method = (const char *)m;
+
+  const char *http_get = "GET";
+  const char *http_post = "POST";
+
+  if (strcmp(http_request_method, http_get)) {
+    c->request->method = GET;
+    return;
+  } else if (strcmp(http_request_method, http_post)) {
+    c->request->method = POST;
+    return;
+  } else {
+    c->request->method = UNKNOWN;
+    return;
+  }
+}
+
 static void parser_parse_http_req_semantics(http_t *ctx, stream_token_t *stream,
                                             size_t token_count) {
   enum {
@@ -87,11 +106,16 @@ static void parser_parse_http_req_semantics(http_t *ctx, stream_token_t *stream,
       semantic_token[METHOD].type = METHOD;
       if (current_token.type == CHAR) {
         semantic_token[METHOD].val[idx++] = current_token.val;
-        ctx->request->method = validate_method(semantic_token[METHOD].val);
       } else if (current_token.type == SPACE) {
         state = PATH_STATE;
         // reset val writer
         idx = 0;
+
+        validate_method(ctx, semantic_token[METHOD].val);
+
+        if (ctx->request->method == UNKNOWN) {
+          // HANDLE EARLY
+        }
       }
       break;
     case PATH_STATE:

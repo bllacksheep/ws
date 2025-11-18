@@ -17,9 +17,9 @@ typedef struct {
 } http_body_t;
 
 typedef struct {
-  const method_t method;
-  const uint8_t *path;
-  const uint8_t *version;
+  method_t method;
+  uint8_t *path;
+  uint8_t *version;
   ht_hash_table *headers;
   http_body_t *body;
 } http_request_t;
