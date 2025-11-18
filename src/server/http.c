@@ -31,18 +31,15 @@ const uint8_t *_200_ok = "HTTP/1.1 200 OK\r\n"
                          "Content-Type: text/plain\r\n"
                          "Connection: keep-alive\r\n\r\n";
 
-req_ctx_t *http_parse_request(const uint8_t *stream) {
-  raw_request_t *req = parser_parse_http_request(stream);
-  req_ctx_t *rctx = (req_ctx_t *)malloc(sizeof(req_ctx_t));
-  rctx->request = req;
-  return rctx;
+void http_parse_request(http_t *ctx, const uint8_t *stream) {
+  parser_parse_http_request(ctx, stream);
 }
 
 void http_handle_raw_request_stream(ctx_t *ctx) {
   if (ctx->buf == NULL || (int)ctx->len >= MAX_REQ_SIZE) {
     exit(1);
   }
-  http_parse_request(ctx->buf);
+  http_parse_request(ctx->http, ctx->buf);
 
   if (ctx->http->request->method == UNKNOWN) {
     fprintf(stderr, "error: initialize request line unknown payload\n");

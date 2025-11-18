@@ -12,7 +12,7 @@ typedef enum {
 } method_t;
 
 typedef struct {
-  uint8_t *body;
+  uint8_t *buf;
   const uint32_t length;
 } http_body_t;
 

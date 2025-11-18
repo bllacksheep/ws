@@ -1,6 +1,7 @@
 #ifndef _Parser_h
 #define _Parser_h
 
+#include "ctx.h"
 #include "hash_table.h"
 #include <stdint.h>
 #include <sys/types.h>
@@ -59,6 +60,6 @@ typedef struct {
 
 static void parser_parse_http_byte_stream(stream_token_t *, const uint8_t *,
                                           size_t);
-static raw_request_t *parser_parse_http_req_semantics(stream_token_t *, size_t);
-raw_request_t *parser_parse_http_request(const uint8_t *);
+static void parser_parse_http_req_semantics(http_t *, stream_token_t *, size_t);
+void parser_parse_http_request(http_t *, const uint8_t *);
 #endif

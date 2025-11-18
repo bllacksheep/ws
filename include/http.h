@@ -41,6 +41,6 @@ typedef struct {
 } req_ctx_t;
 
 void http_handle_raw_request_stream(ctx_t *);
-req_ctx_t *http_parse_request(const uint8_t *);
+void http_parse_request(http_t *, const uint8_t *);
 
 #endif

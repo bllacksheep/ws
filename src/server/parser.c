@@ -1,4 +1,5 @@
 #include "parser.h"
+#include "ctx.h"
 #include "hash_table.h"
 #include <ctype.h>
 #include <stdint.h>
@@ -48,8 +49,8 @@ static void parser_parse_http_byte_stream(stream_token_t *stream,
   }
 }
 
-static raw_request_t *parser_parse_http_req_semantics(stream_token_t *stream,
-                                                      size_t token_count) {
+static void parser_parse_http_req_semantics(http_t *ctx, stream_token_t *stream,
+                                            size_t token_count) {
   enum {
     IDLE,
     METHOD_STATE,
@@ -71,8 +72,6 @@ static raw_request_t *parser_parse_http_req_semantics(stream_token_t *stream,
   memset(semantic_token, 0, sizeof(semantic_token_t) * TOKEN_COUNT);
 
   ht_hash_table *ht = ht_new();
-  // this should be on the heap, freed
-  raw_request_t *req;
 
   for (int32_t i = 0; i < token_count; i++) {
     stream_token_t current_token = stream[i];
@@ -88,7 +87,7 @@ static raw_request_t *parser_parse_http_req_semantics(stream_token_t *stream,
       semantic_token[METHOD].type = METHOD;
       if (current_token.type == CHAR) {
         semantic_token[METHOD].val[idx++] = current_token.val;
-        // req->method = validate_method(semantic_token[METHOD].val);
+        ctx->request->method = validate_method(semantic_token[METHOD].val);
       } else if (current_token.type == SPACE) {
         state = PATH_STATE;
         // reset val writer
@@ -99,7 +98,7 @@ static raw_request_t *parser_parse_http_req_semantics(stream_token_t *stream,
       semantic_token[PATH].type = PATH;
       if (current_token.type == SLASH || current_token.type == CHAR) {
         semantic_token[PATH].val[idx++] = current_token.val;
-        // req->path = validate_path(semantic_token[PATH].val);
+        ctx->request->path = validate_path(semantic_token[PATH].val);
       } else if (current_token.type == SPACE) {
         state = VERSION_STATE;
         idx = 0;
@@ -110,7 +109,7 @@ static raw_request_t *parser_parse_http_req_semantics(stream_token_t *stream,
       if (current_token.type == CHAR || current_token.type == SLASH ||
           current_token.type == NUM || current_token.type == DOT) {
         semantic_token[VERSION].val[idx++] = current_token.val;
-        // req->version = validate_version(semantic_token[VERSION].val);
+        ctx->request->version = validate_version(semantic_token[VERSION].val);
       } else if (current_token.type == CARRIAGE &&
                  stream[i + 1].type == NEWLINE) {
         state = HEADER_STATE;
@@ -164,7 +163,7 @@ static raw_request_t *parser_parse_http_req_semantics(stream_token_t *stream,
           v = k = 0;
         }
         // ht_del_hash_table(ht);
-        // req->headers = validate_headers(ht);
+        ctx->request->headers = validate_headers(ht);
         state = BODY_STATE;
         idx = 0;
       } else if (current_token.type == CARRIAGE &&
@@ -179,6 +178,7 @@ static raw_request_t *parser_parse_http_req_semantics(stream_token_t *stream,
       if (current_token.type == CHAR) {
         semantic_token[BODY].val[idx++] = current_token.val;
       }
+      ctx->request->body->buf = semantic_token[BODY].val;
       // else if idx == to be read, state = DONE;
       break;
     case DONE_STATE:
@@ -187,17 +187,9 @@ static raw_request_t *parser_parse_http_req_semantics(stream_token_t *stream,
       state = DONE_STATE;
     }
   }
-
-  req->method = semantic_token[METHOD].val;
-  req->path = semantic_token[PATH].val;
-  req->version = semantic_token[VERSION].val;
-  req->headers = ht;
-  req->body = semantic_token[BODY].val;
-
-  return req;
 }
 
-raw_request_t *parser_parse_http_request(const uint8_t *byte_stream) {
+void parser_parse_http_request(http_t *ctx, const uint8_t *byte_stream) {
   size_t token_count = strlen((const char *)byte_stream);
   stream_token_t *token_stream =
       (stream_token_t *)malloc(sizeof(stream_token_t) * token_count);
@@ -206,5 +198,5 @@ raw_request_t *parser_parse_http_request(const uint8_t *byte_stream) {
     exit(1);
   }
   parser_parse_http_byte_stream(token_stream, byte_stream, token_count);
-  return parser_parse_http_req_semantics(token_stream, token_count);
+  return parser_parse_http_req_semantics(ctx, token_stream, token_count);
 }
