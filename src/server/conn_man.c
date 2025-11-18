@@ -23,7 +23,7 @@ cnx_manager_t *cnx_manager_create() {
   return cm;
 }
 
-static void cnx_manager_add(cnx_manager_t *cm, int cfd) {
+static void cnx_manager_cnx_add(cnx_manager_t *cm, int cfd) {
   if (cm->allocated >= CNX_MANAGER_DEALLOC_THRESHOLD) {
   }
   if (cm->cnx[cfd] == NULL) {
@@ -36,6 +36,7 @@ static void cnx_manager_add(cnx_manager_t *cm, int cfd) {
 
   cm->cnx[cfd]->buf =
       (uint8_t *)malloc(sizeof(uint8_t) * CNX_MANAGER_BYTE_STREAM_IN);
+
   if (cm->cnx[cfd]->buf == NULL) {
     // handle
   }
@@ -50,10 +51,19 @@ static void cnx_manager_add(cnx_manager_t *cm, int cfd) {
     // handle
   }
 
-  cm->cnx[cfd]->http->request->path = NULL;
-  cm->cnx[cfd]->http->request->version = NULL;
-  cm->cnx[cfd]->http->request->headers = NULL;
-  cm->cnx[cfd]->http->request->body = NULL;
+// play values to be adjusted
+#define BODY_BUF_SIZE 1024
+
+  cm->cnx[cfd]->http->request->body->buf =
+      (uint8_t *)malloc(sizeof(uint8_t) * BODY_BUF_SIZE);
+  if (cm->cnx[cfd]->http->request->body->buf == NULL) {
+    // handle
+  }
+
+  // cm->cnx[cfd]->http->request->path = NULL;
+  // cm->cnx[cfd]->http->request->version = NULL;
+  // cm->cnx[cfd]->http->request->headers = NULL;
+  // cm->cnx[cfd]->http->request->body->buf = NULL;
   cm->cnx[cfd]->http->response =
       (http_response_t *)malloc(sizeof(http_response_t));
   if (cm->cnx[cfd]->http->response == NULL) {
@@ -84,12 +94,12 @@ static void cnx_manager_add(cnx_manager_t *cm, int cfd) {
   // }
 }
 
-void cnx_manager_track(cnx_manager_t *cm, int cfd) {
+void cnx_manager_cnx_track(cnx_manager_t *cm, int cfd) {
   // check the cnx and it's status
-  cnx_manager_add(cm, cfd);
+  cnx_manager_cnx_add(cm, cfd);
 }
 
 // releases cnx
-void cnx_manager_remove(cnx_manager_t *cm, int cfd) {}
+void cnx_manager_cnx_remove(cnx_manager_t *cm, int cfd) {}
 // fetches cnx
 // cnx_ctx_t *cnx_manager_get(cnx_manager_t *cm, int cfd) {}

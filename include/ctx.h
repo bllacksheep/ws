@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include <sys/types.h>
 
+#define ENDPOINT "/chat"
+
 typedef enum {
   UNKNOWN,
   GET,

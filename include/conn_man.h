@@ -19,11 +19,11 @@ typedef struct {
 
 cnx_manager_t *cnx_manager_create();
 // tracks connection
-static void cnx_manager_add(cnx_manager_t *cm, int cfd);
+static void cnx_manager_cnx_add(cnx_manager_t *cm, int cfd);
 // check state of conn add / remove as required
-void cnx_manager_track(cnx_manager_t *cm, int cfd);
+void cnx_manager_cnx_track(cnx_manager_t *cm, int cfd);
 // releases connection
-void cnx_manager_remove(cnx_manager_t *cm, int cfd);
+void cnx_manager_cnx_remove(cnx_manager_t *cm, int cfd);
 // fetches connection
 ctx_t *cnx_manager_cnx_context(cnx_manager_t *cm, int cfd);
 

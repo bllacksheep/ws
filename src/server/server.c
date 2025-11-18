@@ -116,7 +116,7 @@ void drain_tcp_accept_backlog(int server_fd, int epoll_fd,
         break;
       }
     }
-    cnx_manager_track(cm, cfd);
+    cnx_manager_cnx_track(cm, cfd);
     client_event.events = EPOLLIN | EPOLLRDHUP | EPOLLET;
     client_event.data.fd = cfd;
 

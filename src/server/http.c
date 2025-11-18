@@ -5,13 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-unsigned int check_path(const uint8_t *uri) {
-  if (strcmp((char *)uri, ENDPOINT) == 0) {
-    return 0;
-  }
-  return -1;
-}
-
 const uint8_t *_405_method_not_allowed =
     "\n\nHTTP/1.1 405 Method Not Allowed\r\n"
     "Allow: GET\r\n"
@@ -46,7 +39,7 @@ void http_handle_raw_request_stream(ctx_t *ctx) {
     ctx->http->response->buf = _400_bad_request;
   }
 
-  if (check_path(ctx->http->request->path) != 0) {
+  if (ctx->http->request->path != ENDPOINT) {
     fprintf(stderr, "error: initialize request line uri expectet /chat\n");
     ctx->http->response->buf = _400_bad_request;
   }

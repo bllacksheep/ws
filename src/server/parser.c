@@ -49,6 +49,14 @@ static void parser_parse_http_byte_stream(stream_token_t *stream,
   }
 }
 
+unsigned int validate_path(const uint8_t *p) {
+  const char *http_request_path = (const char *)p;
+  if (strcmp((char *)p, ENDPOINT) == 0) {
+    return 0;
+  }
+  return -1;
+}
+
 static inline void validate_method(http_t *c, uint8_t *m) {
 
   const char *http_request_method = (const char *)m;
@@ -122,10 +130,12 @@ static void parser_parse_http_req_semantics(http_t *ctx, stream_token_t *stream,
       semantic_token[PATH].type = PATH;
       if (current_token.type == SLASH || current_token.type == CHAR) {
         semantic_token[PATH].val[idx++] = current_token.val;
-        ctx->request->path = validate_path(semantic_token[PATH].val);
       } else if (current_token.type == SPACE) {
         state = VERSION_STATE;
         idx = 0;
+        if (validate_path(semantic_token[PATH].val)) {
+          ctx->request->path = semantic_token[PATH].val;
+        }
       }
       break;
     case VERSION_STATE:
@@ -133,7 +143,8 @@ static void parser_parse_http_req_semantics(http_t *ctx, stream_token_t *stream,
       if (current_token.type == CHAR || current_token.type == SLASH ||
           current_token.type == NUM || current_token.type == DOT) {
         semantic_token[VERSION].val[idx++] = current_token.val;
-        ctx->request->version = validate_version(semantic_token[VERSION].val);
+        // ctx->request->version =
+        // validate_version(semantic_token[VERSION].val);
       } else if (current_token.type == CARRIAGE &&
                  stream[i + 1].type == NEWLINE) {
         state = HEADER_STATE;
@@ -187,7 +198,7 @@ static void parser_parse_http_req_semantics(http_t *ctx, stream_token_t *stream,
           v = k = 0;
         }
         // ht_del_hash_table(ht);
-        ctx->request->headers = validate_headers(ht);
+        // ctx->request->headers = validate_headers(ht);
         state = BODY_STATE;
         idx = 0;
       } else if (current_token.type == CARRIAGE &&
