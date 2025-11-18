@@ -233,5 +233,6 @@ void parser_parse_http_request(http_t *ctx, const uint8_t *byte_stream) {
     exit(1);
   }
   parser_parse_http_byte_stream(token_stream, byte_stream, token_count);
-  return parser_parse_http_req_semantics(ctx, token_stream, token_count);
+  parser_parse_http_req_semantics(ctx, token_stream, token_count);
+  return;
 }
