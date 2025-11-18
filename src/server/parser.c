@@ -1,57 +1,21 @@
 #include "parser.h"
+#include "ctx.h"
 #include "hash_table.h"
 #include <ctype.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-typedef enum {
-  CHAR,
-  NUM,
-  SPACE,
-  SLASH,
-  CARRIAGE,
-  NEWLINE,
-  SPECIAL,
-  DOT,
-  COLON,
-} stream_type_t;
-
-typedef enum {
-  METHOD,
-  PATH,
-  VERSION,
-  HEADERS,
-  BODY,
-  TOKEN_COUNT
-} semantic_type_t;
-
-typedef struct {
-  char val;
-  stream_type_t type;
-} stream_token_t;
-
-typedef struct {
-  char val[MAX_SEMANTIC_TOKEN_BUF_SIZE];
-  semantic_type_t type;
-} semantic_token_t;
-
-typedef struct {
-  char *headers;
-} headers_t;
-
-typedef struct {
-  char *data;
-} body_t;
-
-void tokenize_request_stream(stream_token_t *stream, char *input, size_t slen) {
+static void parser_parse_http_byte_stream(stream_token_t *stream,
+                                          const uint8_t *input, size_t slen) {
 
   if (slen > MAX_INCOMING_STREAM_SIZE) {
     printf("stream too large!\n");
     exit(1);
   }
 
-  for (int i = 0; i < slen; i++) {
+  for (int32_t i = 0; i < slen; i++) {
     stream_token_t token;
     if (isalpha(input[i])) {
       token.val = input[i];
@@ -85,7 +49,35 @@ void tokenize_request_stream(stream_token_t *stream, char *input, size_t slen) {
   }
 }
 
-void tokenize_http_request(stream_token_t *stream, size_t token_count) {
+unsigned int validate_path(const uint8_t *p) {
+  const char *http_request_path = (const char *)p;
+  if (strcmp((char *)p, ENDPOINT) == 0) {
+    return 1;
+  }
+  return 0;
+}
+
+static void validate_method(http_t *c, uint8_t *m) {
+
+  const char *http_request_method = (const char *)m;
+
+  const char *http_get = "GET";
+  const char *http_post = "POST";
+
+  if (strcmp(http_request_method, http_get) == 0) {
+    c->request->method = GET;
+    return;
+  } else if (strcmp(http_request_method, http_post) == 0) {
+    c->request->method = POST;
+    return;
+  } else {
+    c->request->method = UNKNOWN;
+    return;
+  }
+}
+
+static void parser_parse_http_req_semantics(http_t *ctx, stream_token_t *stream,
+                                            size_t token_count) {
   enum {
     IDLE,
     METHOD_STATE,
@@ -100,7 +92,7 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
   // enum needed to set array size
   enum { MAX_HEADER_BUF = MAX_HEADER_BUF_SIZE };
 
-  int idx = 0;
+  int32_t idx = 0;
   semantic_token_t *semantic_token =
       (semantic_token_t *)malloc(sizeof(semantic_token_t) * TOKEN_COUNT);
 
@@ -108,7 +100,7 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
 
   ht_hash_table *ht = ht_new();
 
-  for (int i = 0; i < token_count; i++) {
+  for (int32_t i = 0; i < token_count; i++) {
     stream_token_t current_token = stream[i];
 
     switch (state) {
@@ -126,6 +118,12 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
         state = PATH_STATE;
         // reset val writer
         idx = 0;
+
+        validate_method(ctx, semantic_token[METHOD].val);
+
+        if (ctx->request->method == UNKNOWN) {
+          // HANDLE EARLY
+        }
       }
       break;
     case PATH_STATE:
@@ -135,6 +133,9 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
       } else if (current_token.type == SPACE) {
         state = VERSION_STATE;
         idx = 0;
+        if (validate_path(semantic_token[PATH].val)) {
+          ctx->request->path = semantic_token[PATH].val;
+        }
       }
       break;
     case VERSION_STATE:
@@ -142,6 +143,8 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
       if (current_token.type == CHAR || current_token.type == SLASH ||
           current_token.type == NUM || current_token.type == DOT) {
         semantic_token[VERSION].val[idx++] = current_token.val;
+        // ctx->request->version =
+        // validate_version(semantic_token[VERSION].val);
       } else if (current_token.type == CARRIAGE &&
                  stream[i + 1].type == NEWLINE) {
         state = HEADER_STATE;
@@ -162,12 +165,12 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
                  stream[i + 2].type == CARRIAGE &&
                  stream[i + 3].type == NEWLINE) {
 
-        char key[MAX_HEADER_BUF] = {0};
-        char val[MAX_HEADER_BUF] = {0};
-        char *headers = semantic_token[HEADERS].val;
-        int j = 0; // overall pos in headers
-        int k = 0;
-        int v = 0;
+        uint8_t key[MAX_HEADER_BUF] = {0};
+        uint8_t val[MAX_HEADER_BUF] = {0};
+        uint8_t *headers = semantic_token[HEADERS].val;
+        int32_t j = 0; // overall pos in headers
+        int32_t k = 0;
+        int32_t v = 0;
 
         // assumes the correct data is sent
         while (headers[j] != '\0') {
@@ -194,16 +197,14 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
           memset(val, 0, MAX_HEADER_BUF);
           v = k = 0;
         }
-
         // ht_del_hash_table(ht);
-
+        // ctx->request->headers = validate_headers(ht);
         state = BODY_STATE;
         idx = 0;
       } else if (current_token.type == CARRIAGE &&
                  stream[i + 1].type == NEWLINE) {
         semantic_token[HEADERS].val[idx++] = ' ';
       }
-
       break;
     case BODY_STATE:
       // depends on headers being accessible via hashmap
@@ -212,6 +213,7 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
       if (current_token.type == CHAR) {
         semantic_token[BODY].val[idx++] = current_token.val;
       }
+      ctx->request->body->buf = semantic_token[BODY].val;
       // else if idx == to be read, state = DONE;
       break;
     case DONE_STATE:
@@ -220,42 +222,16 @@ void tokenize_http_request(stream_token_t *stream, size_t token_count) {
       state = DONE_STATE;
     }
   }
-  printf("method: %s is_method: %d\n", semantic_token[METHOD].val,
-         semantic_token[METHOD].type == METHOD);
-  printf("path: %s is_path: %d\n", semantic_token[PATH].val,
-         semantic_token[PATH].type == PATH);
-  printf("version: %s is_version: %d\n", semantic_token[VERSION].val,
-         semantic_token[VERSION].type == VERSION);
-  printf("headers: %s is_headers: %d\n", semantic_token[HEADERS].val,
-         semantic_token[HEADERS].type == HEADERS);
-  printf("body: %s is_body: %d\n", semantic_token[BODY].val,
-         semantic_token[BODY].type == BODY);
 }
 
-// int main() {
-//
-//   // example:
-//   //
-//   https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_servers#client_handshake_request
-//   char *req = "GET /chat HTTP/1.1\r\n"
-//               "Host: example.com:8000\r\n"
-//               "Upgrade: websocket\r\n"
-//               "Connection: Upgrade\r\n"
-//               "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
-//               "Sec-WebSocket-Version: 13\r\n\r\n";
-//
-//   size_t token_count = strlen(req);
-//   stream_token_t *tstream =
-//       (stream_token_t *)malloc(sizeof(stream_token_t) * token_count);
-//
-//   if (!tstream) {
-//     printf("bad stream\n");
-//     exit(1);
-//   }
-//
-//   tokenize_request_stream(tstream, req, token_count);
-//
-//   reflect(tstream, token_count);
-//
-//   tokenize_http_request(tstream, token_count);
-// }
+void parser_parse_http_request(http_t *ctx, const uint8_t *byte_stream) {
+  size_t token_count = strlen((const char *)byte_stream);
+  stream_token_t *token_stream =
+      (stream_token_t *)malloc(sizeof(stream_token_t) * token_count);
+  if (!token_stream) {
+    printf("never cross the streams!\n");
+    exit(1);
+  }
+  parser_parse_http_byte_stream(token_stream, byte_stream, token_count);
+  return parser_parse_http_req_semantics(ctx, token_stream, token_count);
+}

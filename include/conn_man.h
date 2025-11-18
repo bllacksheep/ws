@@ -1,37 +1,30 @@
 // rfc 6455
+
+#ifndef _CNX_MAN_h
+#define _CNX_MAN_h
+
+#include <ctx.h>
 #include <stdlib.h>
 #include <string.h>
 
-#ifndef _CONN_MAN_h
-#define _CONN_MAN_h
-
-#define CONN_MANAGER_BYTE_STREAM_IN 1024
-#define CONN_MANAGER_CONN_POOL 1024
-#define CONN_MANAGER_DEALLOC_THRESHOLD 100
-
-enum conn_state { CONN_KEEP_ALIVE, CONN_CLOSE };
+#define CNX_MANAGER_CONN_POOL 1024
+#define CNX_MANAGER_DEALLOC_THRESHOLD 100
 
 typedef struct {
-  int fd;
-  char buf[CONN_MANAGER_BYTE_STREAM_IN];
-  enum conn_state reuse;
-} conn_ctx_t;
-
-typedef struct {
-  conn_ctx_t **conn;
+  ctx_t **cnx;
   size_t len;
   size_t cap;
   size_t allocated;
-} conn_manager_t;
+} cnx_manager_t;
 
-conn_manager_t *connection_manager_create();
+cnx_manager_t *cnx_manager_create();
 // tracks connection
-static void connection_manager_add(conn_manager_t *cm, int cfd);
+static void cnx_manager_cnx_add(cnx_manager_t *cm, int cfd);
 // check state of conn add / remove as required
-void connection_manager_track(conn_manager_t *cm, int cfd);
+void cnx_manager_cnx_track(cnx_manager_t *cm, int cfd);
 // releases connection
-void connection_manager_remove(conn_manager_t *cm, int cfd);
+void cnx_manager_cnx_remove(cnx_manager_t *cm, int cfd);
 // fetches connection
-conn_ctx_t *connection_manager_get(conn_manager_t *cm, int cfd);
+ctx_t *cnx_manager_cnx_context(cnx_manager_t *cm, int cfd);
 
 #endif
