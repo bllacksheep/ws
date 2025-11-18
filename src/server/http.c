@@ -39,7 +39,7 @@ void http_handle_raw_request_stream(ctx_t *ctx) {
     ctx->http->response->buf = _400_bad_request;
   }
 
-  if (ctx->http->request->path != ENDPOINT) {
+  if (strcmp((char *)ctx->http->request->path, ENDPOINT) != 0) {
     fprintf(stderr, "error: initialize request line uri expectet /chat\n");
     ctx->http->response->buf = _400_bad_request;
   }

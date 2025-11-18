@@ -52,9 +52,9 @@ void handle_pending_connx(cnx_manager_t *cm, unsigned int cfd,
     http_handle_raw_request_stream(ctx);
 
     // partial write handling to be implemented
-    size_t n = strlen((char *)ctx->http->response);
+    size_t n = strlen((char *)ctx->http->response->buf);
     if (n > 0) {
-      ssize_t bytes_written = write(cfd, ctx->http->response, n);
+      ssize_t bytes_written = write(cfd, ctx->http->response->buf, n);
       if (bytes_written == -1) {
         fprintf(stderr, "error: write failed on fd: %d, %s\n", cfd,
                 strerror(errno));

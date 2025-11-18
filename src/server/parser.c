@@ -52,22 +52,22 @@ static void parser_parse_http_byte_stream(stream_token_t *stream,
 unsigned int validate_path(const uint8_t *p) {
   const char *http_request_path = (const char *)p;
   if (strcmp((char *)p, ENDPOINT) == 0) {
-    return 0;
+    return 1;
   }
-  return -1;
+  return 0;
 }
 
-static inline void validate_method(http_t *c, uint8_t *m) {
+static void validate_method(http_t *c, uint8_t *m) {
 
   const char *http_request_method = (const char *)m;
 
   const char *http_get = "GET";
   const char *http_post = "POST";
 
-  if (strcmp(http_request_method, http_get)) {
+  if (strcmp(http_request_method, http_get) == 0) {
     c->request->method = GET;
     return;
-  } else if (strcmp(http_request_method, http_post)) {
+  } else if (strcmp(http_request_method, http_post) == 0) {
     c->request->method = POST;
     return;
   } else {
