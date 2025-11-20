@@ -5,19 +5,57 @@
 #include <stdlib.h>
 #include <string.h>
 
+typedef struct {
+  uint8_t *key;
+  uint8_t *value;
+  uint64_t epoch;
+} Bucket;
+
+#define BUCKET_COUNT 32
+
+typedef struct {
+  Bucket buckets[BUCKET_COUNT];
+  uint8_t epoch;
+  size_t size;
+} ThreadMap;
+
+_Thread_local ThreadMap tls_map = {.epoch = 1};
+
+static inline void map_clear(ThreadMap *m) {
+  m->epoch++;
+  // set epoch as uint8_t check memset impact vs compiler branch prediction
+  // optimization
+  if (m->epoch == 0) {
+    memset(m->buckets, 0, sizeof(m->buckets));
+    m->epoch = 1;
+  }
+  // if (__builtin_expect(m->epoch == 0, 0)) {
+  //   memset(m->buckets, 0, sizeof(m->buckets));
+  //   m->epoch = 1;
+  // }
+  m->size = 0;
+}
+
 static ht_item *ht_new_item(const uint8_t *k, const uint8_t *v) {
   ht_item *i = malloc(sizeof(ht_item));
+  // printf("ht item alloc %zuB\n", sizeof(ht_item));
   i->key = (uint8_t *)strdup((const char *)k);
+  // printf("item k alloc %zuB\n", sizeof(uint8_t) * strlen((const char *)k));
   i->value = (uint8_t *)strdup((const char *)v);
+  // printf("item v alloc %zuB\n", sizeof(uint8_t) * strlen((const char *)v));
+
   return i;
 }
 
 ht_hash_table *ht_new() {
   ht_hash_table *ht = malloc(sizeof(ht_hash_table));
+  // printf("ht alloc %zuB\n", sizeof(ht_hash_table));
 
   ht->size = HT_MAX_SIZE;
   ht->count = 0;
   ht->items = calloc((size_t)ht->size, sizeof(ht_item *));
+
+  // printf("ht items alloc %zuB\n", sizeof(ht_item) * ht->size);
 
   return ht;
 }
