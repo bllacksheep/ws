@@ -6,34 +6,73 @@
 #include <string.h>
 
 typedef struct {
-  uint8_t *key;
-  uint8_t *value;
+  const uint8_t *key;
+  const uint8_t *value;
   uint64_t epoch;
 } Bucket;
 
 #define BUCKET_COUNT 32
 
 typedef struct {
-  Bucket buckets[BUCKET_COUNT];
-  uint8_t epoch;
+  Bucket *buckets[BUCKET_COUNT];
+  uint64_t epoch;
   size_t size;
 } ThreadMap;
 
-_Thread_local ThreadMap tls_map = {.epoch = 1};
+_Thread_local ThreadMap tls_map = {.epoch = 0};
 
 static inline void map_clear(ThreadMap *m) {
-  m->epoch++;
   // set epoch as uint8_t check memset impact vs compiler branch prediction
   // optimization
   if (m->epoch == 0) {
     memset(m->buckets, 0, sizeof(m->buckets));
     m->epoch = 1;
   }
+  m->epoch++;
   // if (__builtin_expect(m->epoch == 0, 0)) {
   //   memset(m->buckets, 0, sizeof(m->buckets));
   //   m->epoch = 1;
   // }
   m->size = 0;
+}
+
+static inline void new_map() {
+  for (int i = 0; i < BUCKET_COUNT; i++) {
+    Bucket *bucket = malloc(sizeof(Bucket));
+    bucket->value = NULL;
+    bucket->epoch = 0;
+    tls_map.buckets[i] = bucket;
+  }
+}
+
+static void insert(ThreadMap *m, const uint8_t *k, const uint8_t *v) {
+  int32_t index = ht_get_hash(k, m->size, 0);
+  Bucket *b = m->buckets[index];
+
+  int32_t i = 1;
+  while (b != NULL && m->epoch > b->epoch) {
+    index = ht_get_hash(k, m->size, i);
+    Bucket *b = m->buckets[index];
+    i++;
+  }
+  b->value = v;
+  b->epoch++;
+  m->buckets[index] = b;
+}
+
+static const uint8_t *get_map(ThreadMap *m, const uint8_t *k) {
+  int32_t index = ht_get_hash(k, 0);
+  Bucket *b = m->buckets[index];
+
+  int32_t i = 1;
+  while (1) {
+    if (strcmp((const char *)b->key, (const char *)k) == 0) {
+      return k;
+    }
+    i++;
+    index = ht_get_hash(k, i);
+    Bucket *b = m->buckets[index];
+  }
 }
 
 static ht_item *ht_new_item(const uint8_t *k, const uint8_t *v) {
@@ -87,20 +126,19 @@ static int32_t ht_hash(const uint8_t *s, const int32_t a, const int32_t m) {
   return (int32_t)hash;
 }
 
-static int32_t ht_get_hash(const uint8_t *s, const int32_t num_buckets,
-                           const int32_t attempt) {
-  const int32_t hash_a = ht_hash(s, HT_PRIME_1, num_buckets);
-  const int32_t hash_b = ht_hash(s, HT_PRIME_2, num_buckets);
-  return (hash_a + (attempt * (hash_b + 1))) % num_buckets;
+static int32_t ht_get_hash(const uint8_t *s, const int32_t attempt) {
+  const int32_t hash_a = ht_hash(s, HT_PRIME_1, BUCKET_COUNT);
+  const int32_t hash_b = ht_hash(s, HT_PRIME_2, BUCKET_COUNT);
+  return (hash_a + (attempt * (hash_b + 1))) % BUCKET_COUNT;
 }
 
 void ht_insert(ht_hash_table *ht, const uint8_t *key, const uint8_t *value) {
   ht_item *item = ht_new_item(key, value);
-  int32_t index = ht_get_hash(item->key, ht->size, 0);
+  int32_t index = ht_get_hash(item->key, 0);
   ht_item *cur_item = ht->items[index];
   int32_t i = 1;
   while (cur_item != NULL) {
-    index = ht_get_hash(item->key, ht->size, i);
+    index = ht_get_hash(item->key, i);
     cur_item = ht->items[index];
     i++;
   }
