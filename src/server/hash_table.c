@@ -35,18 +35,16 @@ static inline void map_clear(ThreadMap *m) {
   // }
 }
 
-static inline void new_map() {
+static inline void tls_map_init() {
   for (int i = 0; i < BUCKET_COUNT; i++) {
-    Header *header = malloc(sizeof(Header));
-    header->key = NULL;
-    header->value = NULL;
+    Header *header = calloc(sizeof(Header), 0);
     header->epoch = 1;
     tls_map.headers[i] = header;
   }
 }
 
 // only works if map version is a head per request
-static void insert(ThreadMap *tm, const uint8_t *k, const uint8_t *v) {
+static void tls_map_insert(ThreadMap *tm, const uint8_t *k, const uint8_t *v) {
   int32_t try = ht_get_hash(k, 0);
   Header *hdr = tm->headers[try];
 
@@ -65,7 +63,7 @@ static void insert(ThreadMap *tm, const uint8_t *k, const uint8_t *v) {
   tls_map.count++;
 }
 
-static const uint8_t *get_map(ThreadMap *tm, const uint8_t *k) {
+static const uint8_t *tls_map_lookup(ThreadMap *tm, const uint8_t *k) {
   int32_t try = ht_get_hash(k, 0);
   Header *hdr = tm->headers[try];
 
@@ -97,9 +95,9 @@ static int32_t ht_get_hash(const uint8_t *s, const int32_t attempt) {
 }
 
 int main() {
-  new_map();
+  tls_map_init();
   tls_map.epoch++; // assume new request
-  insert(&tls_map, (const uint8_t *)"Host", (const uint8_t *)"12324");
-  const uint8_t *v = get_map(&tls_map, (const uint8_t *)"Host");
+  tls_map_insert(&tls_map, (const uint8_t *)"Host", (const uint8_t *)"12324");
+  const uint8_t *v = tls_map_lookup(&tls_map, (const uint8_t *)"Host");
   printf("val: %s\n", v);
 }
