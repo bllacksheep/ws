@@ -9,23 +9,23 @@ typedef struct {
   const uint8_t *key;
   const uint8_t *value;
   uint64_t epoch;
-} Bucket;
+} Header;
 
 #define BUCKET_COUNT 32
 
 typedef struct {
-  Bucket *buckets[BUCKET_COUNT];
+  Header *headers[BUCKET_COUNT];
   uint64_t epoch;
   size_t size;
 } ThreadMap;
 
-_Thread_local ThreadMap tls_map = {.epoch = 0, .size = BUCKET_COUNT};
+_Thread_local ThreadMap tls_map = {.epoch = 1, .size = BUCKET_COUNT};
 
 static inline void map_clear(ThreadMap *m) {
   // set epoch as uint8_t check memset impact vs compiler branch prediction
   // optimization
   if (m->epoch == 0) {
-    memset(m->buckets, 0, sizeof(m->buckets));
+    memset(m->headers, 0, sizeof(m->headers));
     m->epoch = 1;
   }
   m->epoch++;
@@ -37,42 +37,45 @@ static inline void map_clear(ThreadMap *m) {
 
 static inline void new_map() {
   for (int i = 0; i < BUCKET_COUNT; i++) {
-    Bucket *bucket = malloc(sizeof(Bucket));
-    bucket->key = NULL;
-    bucket->value = NULL;
-    bucket->epoch = 1;
-    tls_map.buckets[i] = bucket;
+    Header *header = malloc(sizeof(Header));
+    header->key = NULL;
+    header->value = NULL;
+    header->epoch = 1;
+    tls_map.headers[i] = header;
   }
 }
 
-static void insert(ThreadMap *m, const uint8_t *k, const uint8_t *v) {
-  int32_t index = ht_get_hash(k, 0);
-  Bucket *b = m->buckets[index];
+// only works if map version is a head per request
+static void insert(ThreadMap *tm, const uint8_t *k, const uint8_t *v) {
+  int32_t try = ht_get_hash(k, 0);
+  Header *hdr = tm->headers[try];
 
   int32_t i = 1;
-  while (b != NULL && m->epoch == b->epoch) {
-    index = ht_get_hash(k, i);
-    Bucket *b = m->buckets[index];
+  // they're all NULL to start, no check
+  // if try<map while loop never executed, else keep looking
+  while (tm->epoch == hdr->epoch) {
+    try = ht_get_hash(k, i);
+    Header *b = tm->headers[try];
     i++;
   }
-  b->key = k;
-  b->value = v;
-  b->epoch++;
-  m->buckets[index] = b;
+  hdr->key = k;
+  hdr->value = v;
+  hdr->epoch++;
+  tm->headers[try] = hdr;
 }
 
-static const uint8_t *get_map(ThreadMap *m, const uint8_t *k) {
-  int32_t index = ht_get_hash(k, 0);
-  Bucket *b = m->buckets[index];
+static const uint8_t *get_map(ThreadMap *tm, const uint8_t *k) {
+  int32_t try = ht_get_hash(k, 0);
+  Header *hdr = tm->headers[try];
 
   int32_t i = 1;
   while (1) {
-    if (strcmp((const char *)b->key, (const char *)k) == 0) {
-      return b->value;
+    if (strcmp((const char *)hdr->key, (const char *)k) == 0) {
+      return hdr->value;
     }
     i++;
-    index = ht_get_hash(k, i);
-    Bucket *b = m->buckets[index];
+    try = ht_get_hash(k, i);
+    hdr = tm->headers[try];
   }
 }
 
@@ -94,6 +97,7 @@ static int32_t ht_get_hash(const uint8_t *s, const int32_t attempt) {
 
 int main() {
   new_map();
+  tls_map.epoch++; // assume new request
   insert(&tls_map, (const uint8_t *)"Host", (const uint8_t *)"12324");
   const uint8_t *v = get_map(&tls_map, (const uint8_t *)"Host");
   printf("val: %s\n", v);
