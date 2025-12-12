@@ -16,10 +16,10 @@ typedef struct {
 typedef struct {
   Header *headers[BUCKET_COUNT];
   uint64_t epoch;
-  size_t size;
+  size_t count;
 } ThreadMap;
 
-_Thread_local ThreadMap tls_map = {.epoch = 1, .size = BUCKET_COUNT};
+_Thread_local ThreadMap tls_map = {.epoch = 1};
 
 static inline void map_clear(ThreadMap *m) {
   // set epoch as uint8_t check memset impact vs compiler branch prediction
@@ -62,6 +62,7 @@ static void insert(ThreadMap *tm, const uint8_t *k, const uint8_t *v) {
   hdr->value = v;
   hdr->epoch++;
   tm->headers[try] = hdr;
+  tls_map.count++;
 }
 
 static const uint8_t *get_map(ThreadMap *tm, const uint8_t *k) {
