@@ -6,8 +6,8 @@
 #include <sys/types.h>
 
 #define HT_MAX_SIZE 5
-#define HT_PRIME_1 151
-#define HT_PRIME_2 157
+#define HT_PRIME_1 31
+#define HT_PRIME_2 37
 
 typedef struct {
   uint8_t *key;

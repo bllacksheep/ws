@@ -11,10 +11,10 @@ typedef struct {
   uint64_t epoch;
 } Header;
 
-#define BUCKET_COUNT 32
+#define TABLE_SIZE 31
 
 typedef struct {
-  Header *headers[BUCKET_COUNT];
+  Header *headers[TABLE_SIZE];
   uint64_t epoch;
   size_t count;
 } ThreadMap;
@@ -36,7 +36,7 @@ static inline void map_clear(ThreadMap *m) {
 }
 
 static inline void tls_map_init() {
-  for (int i = 0; i < BUCKET_COUNT; i++) {
+  for (int i = 0; i < TABLE_SIZE; i++) {
     Header *header = calloc(sizeof(Header), 0);
     header->epoch = 1;
     tls_map.headers[i] = header;
@@ -89,9 +89,9 @@ static int32_t ht_hash(const uint8_t *s, const int32_t a, const int32_t m) {
 }
 
 static int32_t ht_get_hash(const uint8_t *s, const int32_t attempt) {
-  const int32_t hash_a = ht_hash(s, HT_PRIME_1, BUCKET_COUNT);
-  const int32_t hash_b = ht_hash(s, HT_PRIME_2, BUCKET_COUNT);
-  return (hash_a + (attempt * (hash_b + 1))) % BUCKET_COUNT;
+  const int32_t hash_a = ht_hash(s, HT_PRIME_1, TABLE_SIZE);
+  const int32_t hash_b = ht_hash(s, HT_PRIME_2, TABLE_SIZE);
+  return (hash_a + (attempt * (hash_b + 1))) % TABLE_SIZE;
 }
 
 int main() {
