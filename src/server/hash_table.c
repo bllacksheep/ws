@@ -70,15 +70,15 @@ static const uint8_t *tls_map_lookup(ThreadMap *tm, const uint8_t *k) {
   int32_t i = 1;
   while (1) {
     if (hdr->epoch == tm->epoch)
-      if (strcmp((const char *)hdr->key, (const char *)k) == 0) {
+      if (strcmp((const char *)hdr->key, (const char *)k) == 0)
         return hdr->value;
-      }
     i++;
     try = ht_get_hash(k, i);
     hdr = tm->headers[try];
   }
 }
 
+// needs to be integer computation and needs to be a macro
 static int32_t ht_hash(const uint8_t *s, const int32_t a, const int32_t m) {
   int64_t hash = 0;
   const int32_t len_s = strlen((const char *)s);
