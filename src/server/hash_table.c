@@ -37,13 +37,16 @@ static inline void tls_map_clear(ThreadMap *m) {
 
 static inline void tls_map_init() {
   for (int i = 0; i < TABLE_SIZE; i++) {
-    Header *header = calloc(sizeof(Header), 0);
+    Header *header = calloc(1, sizeof(*header));
+    if (!header) {
+      // handle
+    }
     header->epoch = 1;
     tls_map.headers[i] = header;
   }
 }
 
-// only works if map version is a head per request
+// should only works when map version is ahead of items by 1
 static void tls_map_insert(ThreadMap *tm, const uint8_t *k, const uint8_t *v) {
   int32_t try = ht_get_hash(k, 0);
   Header *hdr = tm->headers[try];
