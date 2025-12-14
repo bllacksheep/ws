@@ -21,7 +21,7 @@ typedef struct {
 
 _Thread_local ThreadMap tls_map = {.epoch = 1};
 
-static inline void map_clear(ThreadMap *m) {
+static inline void tls_map_clear(ThreadMap *m) {
   // set epoch as uint8_t check memset impact vs compiler branch prediction
   // optimization
   if (m->epoch == 0) {
@@ -97,7 +97,36 @@ static int32_t ht_get_hash(const uint8_t *s, const int32_t attempt) {
 int main() {
   tls_map_init();
   tls_map.epoch++; // assume new request
-  tls_map_insert(&tls_map, (const uint8_t *)"Host", (const uint8_t *)"12324");
-  const uint8_t *v = tls_map_lookup(&tls_map, (const uint8_t *)"Host");
-  printf("val: %s\n", v);
+  tls_map_insert(&tls_map, (const uint8_t *)"Host",
+                 (const uint8_t *)"example.com");
+  tls_map_insert(&tls_map, (const uint8_t *)"Upgrade", (const uint8_t *)"sure");
+  tls_map_insert(&tls_map, (const uint8_t *)"Hos", (const uint8_t *)"fake");
+  tls_map_insert(&tls_map, (const uint8_t *)"Connection",
+                 (const uint8_t *)"keep-alive");
+
+  const uint8_t *v1 = tls_map_lookup(&tls_map, (const uint8_t *)"Host");
+  printf("Host is: %s\n", v1);
+  const uint8_t *v2 = tls_map_lookup(&tls_map, (const uint8_t *)"Upgrade");
+  printf("Upgrade is: %s\n", v2);
+  const uint8_t *v3 = tls_map_lookup(&tls_map, (const uint8_t *)"Hos");
+  printf("Hos is: %s\n", v3);
+  const uint8_t *v4 = tls_map_lookup(&tls_map, (const uint8_t *)"Connection");
+  printf("Connection is: %s\n", v4);
+
+  // new req
+  tls_map.epoch++; // assume new request
+  tls_map_insert(&tls_map, (const uint8_t *)"Host", (const uint8_t *)"new.com");
+  tls_map_insert(&tls_map, (const uint8_t *)"Upgrade", (const uint8_t *)"no");
+  tls_map_insert(&tls_map, (const uint8_t *)"Hos", (const uint8_t *)"real");
+  tls_map_insert(&tls_map, (const uint8_t *)"Connection",
+                 (const uint8_t *)"close");
+
+  const uint8_t *v5 = tls_map_lookup(&tls_map, (const uint8_t *)"Host");
+  printf("Host is: %s\n", v5);
+  const uint8_t *v6 = tls_map_lookup(&tls_map, (const uint8_t *)"Upgrade");
+  printf("Upgrade is: %s\n", v6);
+  const uint8_t *v7 = tls_map_lookup(&tls_map, (const uint8_t *)"Hos");
+  printf("Hos is: %s\n", v7);
+  const uint8_t *v8 = tls_map_lookup(&tls_map, (const uint8_t *)"Connection");
+  printf("Connection is: %s\n", v8);
 }
