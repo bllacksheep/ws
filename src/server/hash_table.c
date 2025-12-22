@@ -47,15 +47,15 @@ static inline void tls_map_init() {
 }
 
 // should only works when map version is ahead of items by 1
-static void tls_map_insert(ThreadMap *tm, const uint8_t *k, const uint8_t *v) {
-  int32_t try = ht_get_hash(k, 0);
+static void tls_map_insert(ThreadMap *tm, const uint8_t *k, const size_t kl, const uint8_t *v) {
+  int32_t try = ht_get_hash(k, kl, 0);
   Header *hdr = tm->headers[try];
 
   int32_t i = 1;
   // they're all NULL to start, no check
   // if try<map while loop never executed, else keep looking
   while (tm->epoch == hdr->epoch) {
-    try = ht_get_hash(k, i);
+    try = ht_get_hash(k, kl, i);
     Header *b = tm->headers[try];
     i++;
   }
@@ -66,8 +66,8 @@ static void tls_map_insert(ThreadMap *tm, const uint8_t *k, const uint8_t *v) {
   tls_map.count++;
 }
 
-static const uint8_t *tls_map_lookup(ThreadMap *tm, const uint8_t *k) {
-  int32_t try = ht_get_hash(k, 0);
+static const uint8_t *tls_map_lookup(ThreadMap *tm, const uint8_t *k, const size_t kl) {
+  int32_t try = ht_get_hash(k, kl, 0);
   Header *hdr = tm->headers[try];
 
   int32_t i = 1;
@@ -76,61 +76,72 @@ static const uint8_t *tls_map_lookup(ThreadMap *tm, const uint8_t *k) {
       if (strcmp((const char *)hdr->key, (const char *)k) == 0)
         return hdr->value;
     i++;
-    try = ht_get_hash(k, i);
+    try = ht_get_hash(k, kl, i);
     hdr = tm->headers[try];
   }
 }
 
-// needs to be integer computation and needs to be a macro
-static int32_t ht_hash(const uint8_t *s, const int32_t a, const int32_t m) {
-  int64_t hash = 0;
-  const int32_t len_s = strlen((const char *)s);
-  for (int32_t i = 0; i < len_s; i++) {
-    hash += (int64_t)pow(a, len_s - (i + 1)) * s[i];
-    hash = hash % m;
-  }
-  return (int32_t)hash;
+// E n-1 s[i]**n-1-i
+// i = 0
+// hash = hash * prime + char 
+// exactly equal to above
+static int32_t ht_hash2(const uint8_t *key, const size_t klen, 
+			const int32_t prime) {
+	int64_t hash = 0;
+	for (int i = 0; i < klen-1; i++) {
+		hash += (hash * prime) + key[i];
+	} 
+	return (int32_t)hash % TABLE_SIZE;
 }
 
-static int32_t ht_get_hash(const uint8_t *s, const int32_t attempt) {
-  const int32_t hash_a = ht_hash(s, HT_PRIME_1, TABLE_SIZE);
-  const int32_t hash_b = ht_hash(s, HT_PRIME_2, TABLE_SIZE);
+// double hashing + linear probing (incremental 'attempt')
+static int32_t ht_get_hash(const uint8_t *s, const size_t len, const int32_t attempt) {
+  const int32_t hash_a = ht_hash2(s, len, HT_PRIME_1);
+  const int32_t hash_b = ht_hash2(s, len, HT_PRIME_2);
   return (hash_a + (attempt * (hash_b + 1))) % TABLE_SIZE;
 }
 
 int main() {
   tls_map_init();
   tls_map.epoch++; // assume new request
-  tls_map_insert(&tls_map, (const uint8_t *)"Host",
-                 (const uint8_t *)"example.com");
-  tls_map_insert(&tls_map, (const uint8_t *)"Upgrade", (const uint8_t *)"sure");
-  tls_map_insert(&tls_map, (const uint8_t *)"Hos", (const uint8_t *)"fake");
-  tls_map_insert(&tls_map, (const uint8_t *)"Connection",
-                 (const uint8_t *)"keep-alive");
 
-  const uint8_t *v1 = tls_map_lookup(&tls_map, (const uint8_t *)"Host");
+
+  const uint8_t *host_header = "Host";
+  const size_t host_header_len = strlen(host_header);
+  const uint8_t *upgrade_header = "Upgrade";
+  const size_t upgrade_header_len = strlen(upgrade_header);
+  const uint8_t *hos_header = "Hos";
+  const size_t hos_header_len = strlen(hos_header);
+  const uint8_t *connection_header = "Connection";
+  const size_t connection_header_len = strlen(connection_header);
+
+  tls_map_insert(&tls_map, host_header, host_header_len, (const uint8_t *)"example.com");
+  tls_map_insert(&tls_map, upgrade_header, upgrade_header_len, (const uint8_t *)"sure");
+  tls_map_insert(&tls_map, hos_header, hos_header_len, (const uint8_t *)"fake");
+  tls_map_insert(&tls_map, connection_header, connection_header_len, (const uint8_t *)"keep-alive");
+
+  const uint8_t *v1 = tls_map_lookup(&tls_map, host_header, host_header_len);
   printf("Host is: %s\n", v1);
-  const uint8_t *v2 = tls_map_lookup(&tls_map, (const uint8_t *)"Upgrade");
+  const uint8_t *v2 = tls_map_lookup(&tls_map, upgrade_header, upgrade_header_len);
   printf("Upgrade is: %s\n", v2);
-  const uint8_t *v3 = tls_map_lookup(&tls_map, (const uint8_t *)"Hos");
+  const uint8_t *v3 = tls_map_lookup(&tls_map, hos_header, hos_header_len);
   printf("Hos is: %s\n", v3);
-  const uint8_t *v4 = tls_map_lookup(&tls_map, (const uint8_t *)"Connection");
+  const uint8_t *v4 = tls_map_lookup(&tls_map, connection_header, connection_header_len);
   printf("Connection is: %s\n", v4);
 
   // new req
-  tls_map.epoch++; // assume new request
-  tls_map_insert(&tls_map, (const uint8_t *)"Host", (const uint8_t *)"new.com");
-  tls_map_insert(&tls_map, (const uint8_t *)"Upgrade", (const uint8_t *)"no");
-  tls_map_insert(&tls_map, (const uint8_t *)"Hos", (const uint8_t *)"real");
-  tls_map_insert(&tls_map, (const uint8_t *)"Connection",
-                 (const uint8_t *)"close");
+  tls_map.epoch++;
+  tls_map_insert(&tls_map, host_header, host_header_len, (const uint8_t *)"new.com");
+  tls_map_insert(&tls_map, upgrade_header, upgrade_header_len, (const uint8_t *)"no");
+  tls_map_insert(&tls_map, hos_header, hos_header_len, (const uint8_t *)"real");
+  tls_map_insert(&tls_map, connection_header, connection_header_len, (const uint8_t *)"close");
 
-  const uint8_t *v5 = tls_map_lookup(&tls_map, (const uint8_t *)"Host");
+  const uint8_t *v5 = tls_map_lookup(&tls_map, host_header, host_header_len);
   printf("Host is: %s\n", v5);
-  const uint8_t *v6 = tls_map_lookup(&tls_map, (const uint8_t *)"Upgrade");
+  const uint8_t *v6 = tls_map_lookup(&tls_map, upgrade_header, upgrade_header_len);
   printf("Upgrade is: %s\n", v6);
-  const uint8_t *v7 = tls_map_lookup(&tls_map, (const uint8_t *)"Hos");
+  const uint8_t *v7 = tls_map_lookup(&tls_map, hos_header, hos_header_len);
   printf("Hos is: %s\n", v7);
-  const uint8_t *v8 = tls_map_lookup(&tls_map, (const uint8_t *)"Connection");
+  const uint8_t *v8 = tls_map_lookup(&tls_map, connection_header, connection_header_len);
   printf("Connection is: %s\n", v8);
 }
