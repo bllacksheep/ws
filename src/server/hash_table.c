@@ -85,26 +85,27 @@ static const uint8_t *tls_map_lookup(ThreadMap *tm, const uint8_t *k, const size
 // i = 0
 // hash = hash * prime + char 
 // exactly equal to above
-static int32_t ht_hash2(const uint8_t *key, const size_t klen, 
-			const int32_t prime) {
-	int64_t hash = 0;
-	for (int i = 0; i < klen-1; i++) {
-		hash += (hash * prime) + key[i];
+static int32_t ht_hash2(const uint8_t *k, const size_t n, 
+			const int32_t p) {
+	int64_t h = 0;
+	for (int i = 0; i < n-1; i++) {
+		h += (h * p) + k[i];
 	} 
-	return (int32_t)hash % TABLE_SIZE;
+	return (int32_t)h % TABLE_SIZE;
 }
 
 // double hashing + linear probing (incremental 'attempt')
-static int32_t ht_get_hash(const uint8_t *s, const size_t len, const int32_t attempt) {
-  const int32_t hash_a = ht_hash2(s, len, HT_PRIME_1);
-  const int32_t hash_b = ht_hash2(s, len, HT_PRIME_2);
+static int32_t ht_get_hash(const uint8_t *item_key, const size_t item_key_len, 
+		const int32_t attempt) {
+  const int32_t hash_a = ht_hash2(item_key, item_key_len, HT_PRIME_1);
+  const int32_t hash_b = ht_hash2(item_key, item_key_len, HT_PRIME_2);
   return (hash_a + (attempt * (hash_b + 1))) % TABLE_SIZE;
 }
 
 int main() {
   tls_map_init();
-  tls_map.epoch++; // assume new request
-
+  // new request
+  tls_map.epoch++;
 
   const uint8_t *host_header = "Host";
   const size_t host_header_len = strlen(host_header);
@@ -129,7 +130,7 @@ int main() {
   const uint8_t *v4 = tls_map_lookup(&tls_map, connection_header, connection_header_len);
   printf("Connection is: %s\n", v4);
 
-  // new req
+  // new request
   tls_map.epoch++;
   tls_map_insert(&tls_map, host_header, host_header_len, (const uint8_t *)"new.com");
   tls_map_insert(&tls_map, upgrade_header, upgrade_header_len, (const uint8_t *)"no");
