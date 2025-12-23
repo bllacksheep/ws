@@ -14,8 +14,8 @@ typedef struct {
 
 typedef struct {
   Header *headers[TABLE_SIZE];
-  uint64_t epoch;
   size_t count;
+  uint64_t epoch;
 } ThreadMap;
 
 _Thread_local ThreadMap tls_map = {.epoch = 1};
@@ -47,7 +47,7 @@ static inline void tls_map_init() {
 
 // should only works when map version is ahead of items by 1
 static void tls_map_insert(ThreadMap *tm, const uint8_t *k, const size_t kl, const uint8_t *v) {
-  size_t try = ht_get_hash(k, kl, 0);
+  uint32_t try = ht_get_hash(k, kl, 0u);
   Header *hdr = tm->headers[try];
 
   size_t i = 1;
@@ -66,7 +66,7 @@ static void tls_map_insert(ThreadMap *tm, const uint8_t *k, const size_t kl, con
 }
 
 static const uint8_t *tls_map_lookup(ThreadMap *tm, const uint8_t *k, const size_t kl) {
-  size_t try = ht_get_hash(k, kl, 0);
+  uint32_t try = ht_get_hash(k, kl, 0);
   Header *hdr = tm->headers[try];
 
   size_t i = 1;
@@ -84,20 +84,21 @@ static const uint8_t *tls_map_lookup(ThreadMap *tm, const uint8_t *k, const size
 // i = 0
 // hash = hash * prime + char 
 // exactly equal to above
-static size_t ht_hash2(const uint8_t *k, const size_t n, 
-			const int32_t p) {
-	size_t h = 0;
-	for (int i = 0; i < n; i++) {
+static inline uint32_t ht_hash2(const uint8_t *k, const size_t n, 
+			const uint32_t p) {
+	uint64_t h = 0;
+	for (size_t i = 0; i < n; i++) {
 		h += (h * p) + k[i];
 	} 
-	return h;
+	return (uint32_t)h;
 }
 
 // double hashing + linear probing (incremental 'attempt')
-static size_t ht_get_hash(const uint8_t *item_key, const size_t item_key_len, 
-		const int32_t attempt) {
-  const size_t hash_a = ht_hash2(item_key, item_key_len, HT_PRIME_1);
-  const size_t hash_b = ht_hash2(item_key, item_key_len, HT_PRIME_2);
+static inline uint32_t ht_get_hash(const uint8_t *item_key, const size_t item_key_len, 
+		const size_t attempt) {
+  const uint32_t hash_a = ht_hash2(item_key, item_key_len, HT_PRIME_1);
+  const uint32_t hash_b = ht_hash2(item_key, item_key_len, HT_PRIME_2);
+  // should these types align in shape?
   return (hash_a + (attempt * (hash_b + 1))) % TABLE_SIZE;
 }
 
