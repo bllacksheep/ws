@@ -11,7 +11,6 @@ typedef struct {
   uint64_t epoch;
 } Header;
 
-#define TABLE_SIZE 31
 
 typedef struct {
   Header *headers[TABLE_SIZE];

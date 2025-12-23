@@ -5,9 +5,9 @@
 #include <stdint.h>
 #include <sys/types.h>
 
-#define HT_MAX_SIZE 5
-#define HT_PRIME_1 31
-#define HT_PRIME_2 37
+#define TABLE_SIZE 31u
+#define HT_PRIME_1 31u
+#define HT_PRIME_2 37u
 
 typedef struct {
   uint8_t *key;
