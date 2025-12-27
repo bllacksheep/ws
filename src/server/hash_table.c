@@ -9,11 +9,11 @@ typedef struct {
   const uint8_t *key;
   const uint8_t *value;
   uint64_t epoch;
-} Header;
+} Item;
 
 
 typedef struct {
-  Header *headers[TABLE_SIZE];
+  Item *items[TABLE_SIZE];
   size_t count;
   uint64_t epoch;
 } ThreadMap;
@@ -24,7 +24,7 @@ static inline void tls_map_clear(ThreadMap *m) {
   // set epoch as uint8_t check memset impact vs compiler branch prediction
   // optimization
   if (m->epoch == 0) {
-    memset(m->headers, 0, sizeof(m->headers));
+    memset(m->items, 0, sizeof(m->items));
     m->epoch = 1;
   }
   m->epoch++;
@@ -36,47 +36,47 @@ static inline void tls_map_clear(ThreadMap *m) {
 
 static inline void tls_map_init() {
   for (int i = 0; i < TABLE_SIZE; i++) {
-    Header *header = calloc(1, sizeof(*header));
-    if (!header) {
+    Item *item = calloc(1, sizeof(*item));
+    if (!item) {
       // handle
     }
-    header->epoch = 1;
-    tls_map.headers[i] = header;
+    item->epoch = 1;
+    tls_map.items[i] = item;
   }
 }
 
 // should only works when map version is ahead of items by 1
 static void tls_map_insert(ThreadMap *tm, const uint8_t *k, const size_t kl, const uint8_t *v) {
   uint32_t try = ht_get_hash(k, kl, 0u);
-  Header *hdr = tm->headers[try];
+  Item *item = tm->items[try];
 
   size_t i = 1;
   // they're all NULL to start, no check
   // if try<map while loop never executed, else keep looking
-  while (tm->epoch == hdr->epoch) {
+  while (tm->epoch == item->epoch) {
     try = ht_get_hash(k, kl, i);
-    Header *b = tm->headers[try];
+    Item *b = tm->items[try];
     i++;
   }
-  hdr->key = k;
-  hdr->value = v;
-  hdr->epoch++;
-  tm->headers[try] = hdr;
+  item->key = k;
+  item->value = v;
+  item->epoch++;
+  tm->items[try] = item;
   tls_map.count++;
 }
 
 static const uint8_t *tls_map_lookup(ThreadMap *tm, const uint8_t *k, const size_t kl) {
   uint32_t try = ht_get_hash(k, kl, 0);
-  Header *hdr = tm->headers[try];
+  Item *item = tm->items[try];
 
   size_t i = 1;
   while (1) {
-    if (hdr->epoch == tm->epoch)
-      if (strcmp((const char *)hdr->key, (const char *)k) == 0)
-        return hdr->value;
+    if (item->epoch == tm->epoch)
+      if (strcmp((const char *)item->key, (const char *)k) == 0)
+        return item->value;
     i++;
     try = ht_get_hash(k, kl, i);
-    hdr = tm->headers[try];
+    item = tm->items[try];
   }
 }
 
@@ -90,7 +90,7 @@ static inline uint32_t ht_hash2(const uint8_t *k, const size_t n,
 	for (size_t i = 0; i < n; i++) {
 		h += (h * p) + k[i];
 	} 
-	return (uint32_t)h;
+	return (uint32_t)h % p;
 }
 
 // double hashing + linear probing (incremental 'attempt')
