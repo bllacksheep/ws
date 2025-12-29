@@ -54,7 +54,7 @@ typedef struct {
   uint8_t *method;
   uint8_t *path;
   uint8_t *version;
-  ht_hash_table *headers;
+  Item *items[TABLE_SIZE];
   uint8_t *body;
 } raw_request_t;
 

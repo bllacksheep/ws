@@ -2,6 +2,7 @@
 #include "conn_man.h"
 #include "ctx.h"
 #include "http.h"
+#include "hash_table.h"
 #include "ip.h"
 #include <arpa/inet.h>
 #include <asm-generic/errno.h>
@@ -129,19 +130,23 @@ void drain_tcp_accept_backlog(int server_fd, int epoll_fd,
 }
 
 int main(int argc, char *argv[]) {
-  unsigned int num_recv_q_events, num_ready_events;
-  unsigned int sfd, cfd, efd;
-  struct sockaddr_in server;
-  struct sockaddr_in client;
-  struct in_addr ip;
+  unsigned int num_recv_q_events = 0;
+  unsigned int num_ready_events = 0;
+  unsigned int sfd = 0; 
+  unsigned int cfd = 0;
+  unsigned int efd = 0;
   unsigned int rawip = 0;
-  char *address;
-  in_port_t port;
+  struct sockaddr_in server = {0};
+  struct sockaddr_in client = {0};
+  struct in_addr ip = {0};
+  char *address = 0;
+  in_port_t port = 0;
 
   cnx_manager_t *cnxmgr = cnx_manager_create();
   if (cnxmgr == NULL) {
     // handle
   }
+  tls_map_init();
 
 #define DEFAULT INADDR_LOOPBACK
 

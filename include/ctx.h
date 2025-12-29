@@ -22,7 +22,7 @@ typedef struct {
   method_t method;
   uint8_t *path;
   uint8_t *version;
-  ht_hash_table *headers;
+  Item *items[TABLE_SIZE];
   http_body_t *body;
 } http_request_t;
 

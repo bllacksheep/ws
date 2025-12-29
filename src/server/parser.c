@@ -78,6 +78,8 @@ static void validate_method(http_t *c, uint8_t *m) {
 
 static void parser_parse_http_req_semantics(http_t *ctx, stream_token_t *stream,
                                             size_t token_count) {
+
+
   enum {
     IDLE,
     METHOD_STATE,
@@ -98,7 +100,7 @@ static void parser_parse_http_req_semantics(http_t *ctx, stream_token_t *stream,
 
   memset(semantic_token, 0, sizeof(semantic_token_t) * TOKEN_COUNT);
 
-  ht_hash_table *ht = ht_new();
+  tls_map.epoch++;
 
   for (int32_t i = 0; i < token_count; i++) {
     stream_token_t current_token = stream[i];
@@ -191,7 +193,7 @@ static void parser_parse_http_req_semantics(http_t *ctx, stream_token_t *stream,
             j++;
           }
 
-          ht_insert(ht, key, val);
+          tls_map_insert(key, strlen(key), val);
 
           memset(key, 0, MAX_HEADER_BUF);
           memset(val, 0, MAX_HEADER_BUF);

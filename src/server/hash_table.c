@@ -5,48 +5,39 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef struct {
-  const uint8_t *key;
-  const uint8_t *value;
-  uint64_t epoch;
-} Item;
+static _Thread_local ThreadMap tls_map;
 
-
-typedef struct {
-  Item *items[TABLE_SIZE];
-  size_t count;
-  uint64_t epoch;
-} ThreadMap;
-
-_Thread_local ThreadMap tls_map = {.epoch = 1};
-
-static inline void tls_map_clear(ThreadMap *m) {
-  // set epoch as uint8_t check memset impact vs compiler branch prediction
-  // optimization
-  if (m->epoch == 0) {
-    memset(m->items, 0, sizeof(m->items));
-    m->epoch = 1;
-  }
-  m->epoch++;
-  // if (__builtin_expect(m->epoch == 0, 0)) {
-  //   memset(m->buckets, 0, sizeof(m->buckets));
-  //   m->epoch = 1;
-  // }
+ThreadMap* tls_map_get() {
+	if (!tls_map) {
+		tls_map_init(&tls_map);
+	}
+	return &tls_map;
 }
 
-static inline void tls_map_init() {
+
+static inline void tls_map_clear(ThreadMap *tm) {
+  // pre-condition checks in caller
+  memset(tm->items, 0, sizeof(tm->items));
+  tm->epoch = 1;
+}
+
+static inline void tls_map_init(ThreadMap *tm) {
+  tm->epoch = 1;
   for (int i = 0; i < TABLE_SIZE; i++) {
     Item *item = calloc(1, sizeof(*item));
     if (!item) {
       // handle
     }
     item->epoch = 1;
-    tls_map.items[i] = item;
+    tm->items[i] = item;
   }
 }
 
 // should only works when map version is ahead of items by 1
-static void tls_map_insert(ThreadMap *tm, const uint8_t *k, const size_t kl, const uint8_t *v) {
+void tls_map_insert(const uint8_t *k, const size_t kl, const uint8_t *v) {
+
+  ThreadMap* tm = tls_map_get();
+
   uint32_t try = ht_get_hash(k, kl, 0u);
   Item *item = tm->items[try];
 
@@ -65,7 +56,10 @@ static void tls_map_insert(ThreadMap *tm, const uint8_t *k, const size_t kl, con
   tls_map.count++;
 }
 
-static const uint8_t *tls_map_lookup(ThreadMap *tm, const uint8_t *k, const size_t kl) {
+const uint8_t *tls_map_lookup(const uint8_t *k, const size_t kl) {
+
+  ThreadMap *tm = tls_map_get();
+
   uint32_t try = ht_get_hash(k, kl, 0);
   Item *item = tm->items[try];
 
@@ -101,7 +95,7 @@ static inline uint32_t ht_get_hash(const uint8_t *item_key, const size_t item_ke
   // should these types align in shape?
   return (hash_a + (attempt * (hash_b + 1))) % TABLE_SIZE;
 }
-
+/*
 int main() {
   tls_map_init();
   // new request
@@ -146,3 +140,4 @@ int main() {
   const uint8_t *v8 = tls_map_lookup(&tls_map, connection_header, connection_header_len);
   printf("Connection is: %s\n", v8);
 }
+*/
