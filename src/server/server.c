@@ -20,6 +20,7 @@
 #include <unistd.h>
 // clean these up check bin size
 
+
 void handle_pending_connx(cnx_manager_t *cm, unsigned int cfd,
                           unsigned int epfd) {
 
@@ -84,18 +85,6 @@ int static setnonblocking(unsigned int fd) {
   return 0;
 }
 
-void static server_hangup(int server_fd, int epoll_fd) {
-  if (close(server_fd) == -1) {
-    fprintf(stderr, "error: close on server fd: %d %s\n", server_fd,
-            strerror(errno));
-  }
-  if (epoll_fd > 0) {
-    if (close(epoll_fd) == -1) {
-      fprintf(stderr, "error: close on epoll fd: %d %s\n", epoll_fd,
-              strerror(errno));
-    }
-  }
-}
 
 void drain_tcp_accept_backlog(int server_fd, int epoll_fd,
                               struct epoll_event client_event,
@@ -129,83 +118,143 @@ void drain_tcp_accept_backlog(int server_fd, int epoll_fd,
   }
 }
 
-int main(int argc, char *argv[]) {
-  unsigned int num_recv_q_events = 0;
-  unsigned int num_ready_events = 0;
+
+typedef struct server_state {
+  unsigned int n_recvq_events = 0;
+  unsigned int n_ready_events = 0;
   unsigned int sfd = 0; 
   unsigned int cfd = 0;
   unsigned int efd = 0;
-  unsigned int rawip = 0;
+  unsigned int raw_net_ip = 0;
+  unsigned int raw_net_port = 0;
   struct sockaddr_in server = {0};
   struct sockaddr_in client = {0};
-  struct in_addr ip = {0};
-  char *address = 0;
-  in_port_t port = 0;
 
-  cnx_manager_t *cnxmgr = cnx_manager_create();
-  if (cnxmgr == NULL) {
-    // handle
-  }
-  tls_map_init();
+  struct in_addr server_sin_addr_ip = {0};
+  in_port_t server_sin_port = 0;
 
-#define DEFAULT INADDR_LOOPBACK
+  char *ip_log_string = 0;
+  char *port_log_string = 0;
 
-  // bin/server 127.0.0.1 8080
-  if (argc < 2) {
-    ip.s_addr = htonl(DEFAULT);
-    // convert to string
+  cnx_manager_t *cm;
+} s_state_t;
+
+
+// string used in log messages
+static void ip_addr_to_string(s_state_t *s) {
     char buf[20] = {0};
-    address = iptoa(DEFAULT, buf);
-    port = htons((unsigned short)PORT);
-  }
-  // all other args discarded
-  if (argc >= 3) {
-    address = argv[1];
-    // convert to useable
-    rawip = atoip(address, strlen(address));
-    ip.s_addr = htonl(rawip);
-    unsigned short port_atoi = atoi(argv[2]);
-    port = htons((unsigned short)port_atoi);
+    s->ip_log_string = iptoa(DEFAULT_LISTEN_ADDR, buf);
+}
+
+// string used in log messages
+static void port_num_to_string(s_state_t *s) {
+    s->port_log_string = ntohs(s->raw_net_port);
+}
+
+static void set_default_listen_addr_port(s_state_t *s) {
+    // server_sin_port and addr might be able to retire
+    s->server_sin_port = htons((unsigned short)DEFAULT_LISTEN_PORT);
+    s->server_sin_addr_ip.s_addr = htonl(DEFAULT_LISTEN_ADDR);
+    ip_addr_to_string(s);
+    port_num_to_string(s);
+}
+
+// convert to useable ip from string
+static void ip_string_to_netip(s_state_t *s) {
+    s->raw_net_ip = atoip(state->listening_on_address, strlen(s->listening_on_address));
+}
+
+void set_listen_addr_port(s_state_t *s, char* ip, char* port) {
+    if (ip == NULL && port == NULL) {
+        set_default_listen_addr_port(s);
+    } else {
+        s->ip_log_string = ip;
+        s->port_log_string = port;
+
+        ip_string_to_netip(state);
+        s->server_sin_addr_ip.s_addr = htonl(s->raw_net_ip);
+        unsigned short port_log_string = atoi(s->port_log_string);
+        s->raw_net_port = htons((unsigned short)port_log_string);
+    }
+    s->server.sin_family = AF_INET;
+    s->server.sin_port = s->server_sin_port;
+    s->server.sin_addr = s->server_sin_addr_ip;
+}
+
+// initialize server state
+s_state_t *server_state_initialization(char *ip, char *port) {
+  s_state_t init_s_state = calloc(1, sizeof(s_state_t);
+  init_s_state->listen_backlog = LISTEN_BACKLOG;
+
+  if (init_s_state == NULL) {
+    fprintf(stderr, "could not create server state container");
+    exit(-1);
   }
 
-  if ((sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1) {
-    fprintf(stderr, "error: server socket create %s\n", strerror(errno));
-    return 1;
+  // initialize connection manager
+  init_s_state->cm = cnx_manager_create();
+
+  if (init_s_state->cm == NULL) {
+    fprintf(stderr, "could not create server connection manager");
+    exit(-1);
   }
 
-  if (setnonblocking(sfd) == -1) {
-    fprintf(stderr, "error: setting SOCK_NONBLOCK on fd: %d %s\n", cfd,
+  // bin/server ip port or DEFAULT_LISTEN_ADDR DEFAULT_LISTEN_PORT
+  set_listen_addr_port(init_s_state, ip, port);
+
+  // initialize local thread storage
+  tls_map_init();
+  return init_s_state
+}
+
+void static hangup(s_state_t* s) {
+    close(s->sfd);
+    free(s->cm);
+    free(s);
+}
+
+int main(int argc, char *argv[]) {
+   char *ip = 0;
+   char *port = 0;
+
+   if (argc > 2);
+      ip = argv[1], port = argv[2];
+    
+   s_state_t *ss = server_state_initialization(ip, port);
+
+  if ((ss->sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1) {
+    fprintf(stderr, "could not create server socket %s\n", strerror(errno));
+    hangup(ss);
+    exit(-1);
+  }
+
+  if (setnonblocking(ss->sfd) == -1) {
+    fprintf(stderr, "could not set SOCK_NONBLOCK on fd: %d %s\n", ss->sfd,
             strerror(errno));
-    server_hangup(sfd, 0);
-    // potentially some form of exit
+    hangup(ss);
+    exit(-1);
   }
 
   int opt = 1;
-  if (setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
+  if (setsockopt(ss->sfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
     fprintf(stderr, "error: setting sockopts %s\n", strerror(errno));
-    server_hangup(sfd, 0);
-    return 1;
+    hangup(ss);
+    exit(-1);
   }
 
-  memset(&server, 0, sizeof(server));
-
-  server.sin_family = AF_INET;
-  server.sin_port = port;
-  server.sin_addr = ip;
-
-  if (bind(sfd, (struct sockaddr *)&server, sizeof(server)) == -1) {
+  if (bind(ss->sfd, (struct sockaddr *)&ss->server, sizeof(ss->server)) == -1) {
     fprintf(stderr, "bind error: %s\n", strerror(errno));
-    server_hangup(sfd, 0);
-    return 1;
+    hangup(ss);
+    exit(-1);
   }
 
-  if (listen(sfd, LISTEN_BACKLOG) == -1) {
+  if (listen(ss->sfd, ss->listen_backlog) == -1) {
     fprintf(stderr, "listen error: %s\n", strerror(errno));
-    server_hangup(sfd, 0);
+    hangup(ss);
     return 1;
   }
 
-  printf("Listening on %s:%d\n", address, ntohs(port));
+  printf("Listening on %s:%d\n", ss->ip_log_string, ntohs(listening_port));
 
   memset(&client, 0, sizeof(client));
   socklen_t cl = sizeof(client);
