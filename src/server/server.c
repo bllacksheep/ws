@@ -250,7 +250,7 @@ void server_socket_listen(s_state_t *s) {
     exit(-1);
   }
 
-  if (listen(ss->sfd, ss->listen_backlog) == -1) {
+  if (listen(s->sfd, s->listen_backlog) == -1) {
     fprintf(stderr, "could not listen server socket on %s:%s %s\n", s->ip_log_string, s->port_log_string, strerror(errno));
     hangup(s);
     exit(-1);
