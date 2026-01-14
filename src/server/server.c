@@ -175,7 +175,7 @@ void set_listen_addr_port(s_state_t *s, char* ip, char* port) {
         s->port_log_string = port;
 
         ipaddrstr_tonetip(s);
-        s->server_sin_port = htons((unsigned short)port_log_string);
+        s->server_sin_port = htons((unsigned short)s->port_log_string);
         s->server_sin_addr_ip.s_addr = htonl(s->raw_net_ip);
     }
     s->server.sin_family = AF_INET;
