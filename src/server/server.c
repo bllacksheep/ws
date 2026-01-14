@@ -1,4 +1,4 @@
-include "server.h"
+nclude "server.h"
 #include "conn_man.h"
 #include "ctx.h"
 #include "http.h"
@@ -21,7 +21,7 @@ include "server.h"
 // clean these up check bin size
 
 
-void handle_pending_connx(cnx_manager_t *cm, unsigned int cfd,
+void handle_pending_cxn(cnx_manager_t *cm, unsigned int cfd,
                           unsigned int epfd) {
 
   ctx_t *ctx = cm->cnx[cfd];
@@ -86,7 +86,7 @@ int static setnonblocking(unsigned int fd) {
 }
 
 
-void drain_tcp_accept_backlog(int server_fd, int epoll_fd,
+void tcp_drain_accept_backlog(int server_fd, int epoll_fd,
                               struct epoll_event client_event,
                               cnx_manager_t *cm, struct sockaddr_in client_addr,
                               socklen_t *client_addr_len) {
@@ -118,7 +118,7 @@ void drain_tcp_accept_backlog(int server_fd, int epoll_fd,
   }
 }
 
-
+// create some sub structs here for client server and epoll
 typedef struct server_state {
   unsigned int n_recvq_events = 0;
   unsigned int n_ready_events = 0;
@@ -129,6 +129,9 @@ typedef struct server_state {
   unsigned int raw_net_port = 0;
   struct sockaddr_in server = {0};
   struct sockaddr_in client = {0};
+
+  socklen_t client_len;
+  struct epoll_event client_events, server_events, events[MAX_EVENTS];
 
   struct in_addr server_sin_addr_ip = {0};
   in_port_t server_sin_port = 0;
@@ -180,10 +183,13 @@ void set_listen_addr_port(s_state_t *s, char* ip, char* port) {
     s->server.sin_addr = s->server_sin_addr_ip;
 }
 
+
+// init server, client, epoll here separately
 // initialize server state
 s_state_t *server_state_initialization(char *ip, char *port) {
   s_state_t *init_s_state = calloc(1, sizeof(s_state_t);
   init_s_state->listen_backlog = LISTEN_BACKLOG;
+  init_s_state->client_len = sizeof(init_s_state->client);
 
   if (init_s_state == NULL) {
     fprintf(stderr, "could not create server state container");
@@ -208,8 +214,47 @@ s_state_t *server_state_initialization(char *ip, char *port) {
 
 void static hangup(s_state_t* s) {
     close(s->sfd);
+    close(s->efd);
     free(s->cm);
     free(s);
+}
+
+
+void server_socket_create(s_state_t *s) {
+  if ((s->sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1) {
+    fprintf(stderr, "could not create server socket %s\n", strerror(errno));
+    hangup(s);
+    exit(-1);
+  }
+
+  if (setnonblocking(s->sfd) == -1) {
+    fprintf(stderr, "could not set server sock SOCK_NONBLOCK on fd: %d %s\n", s->sfd,
+            strerror(errno));
+    hangup(s);
+    exit(-1);
+  }
+
+  int opt = 1;
+  if (setsockopt(s->sfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
+    fprintf(stderr, "could not set server sock SOL_SOCKET SO_REUSEADDR %s\n", strerror(errno));
+    hangup(s);
+    exit(-1);
+  }
+}
+
+void server_socket_listen(s_state_t *s) {
+  if (bind(s->sfd, (struct sockaddr *)&s->server, sizeof(s->server)) == -1) {
+    fprintf(stderr, "could not bind server sock %s\n", strerror(errno));
+    hangup(s);
+    exit(-1);
+  }
+
+  if (listen(ss->sfd, ss->listen_backlog) == -1) {
+    fprintf(stderr, "could not listen server socket on %s:%s %s\n", s->ip_log_string, s->port_log_string, strerror(errno));
+    hangup(s);
+    exit(-1);
+  }
+  printf("Listening on %s:%d\n", s->ip_log_string, s->port_log_string);
 }
 
 int main(int argc, char *argv[]) {
@@ -221,83 +266,47 @@ int main(int argc, char *argv[]) {
     
    s_state_t *ss = server_state_initialization(ip, port);
 
-  if ((ss->sfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1) {
-    fprintf(stderr, "could not create server socket %s\n", strerror(errno));
-    hangup(ss);
-    exit(-1);
-  }
+   server_socket_create(ss);
+   server_socket_listen(ss);
 
-  if (setnonblocking(ss->sfd) == -1) {
-    fprintf(stderr, "could not set SOCK_NONBLOCK on fd: %d %s\n", ss->sfd,
+  if ((ss->efd = epoll_create1(0)) == -1) {
+    fprintf(stderr, "could not create epoll instance %s\n",
             strerror(errno));
     hangup(ss);
     exit(-1);
-  }
-
-  int opt = 1;
-  if (setsockopt(ss->sfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
-    fprintf(stderr, "error: setting sockopts %s\n", strerror(errno));
-    hangup(ss);
-    exit(-1);
-  }
-
-  if (bind(ss->sfd, (struct sockaddr *)&ss->server, sizeof(ss->server)) == -1) {
-    fprintf(stderr, "bind error: %s\n", strerror(errno));
-    hangup(ss);
-    exit(-1);
-  }
-
-  if (listen(ss->sfd, ss->listen_backlog) == -1) {
-    fprintf(stderr, "listen error: %s\n", strerror(errno));
-    hangup(ss);
-    return 1;
-  }
-
-  printf("Listening on %s:%d\n", ss->ip_log_string, ntohs(listening_port));
-
-  memset(&client, 0, sizeof(client));
-  socklen_t cl = sizeof(client);
-  struct epoll_event cev, sev, events[MAX_EVENTS];
-
-  if ((efd = epoll_create1(0)) == -1) {
-    fprintf(stderr, "error: creating server conn epoll instance %s\n",
-            strerror(errno));
-    server_hangup(sfd, efd);
-    return 1;
   }
 
   sev.events = EPOLLIN;
-  sev.data.fd = sfd;
+  sev.data.fd = ss->sfd;
 
-  if (epoll_ctl(efd, EPOLL_CTL_ADD, sfd, &sev) == -1) {
-    fprintf(stderr, "error: epoll add sfd to instance list failed %s\n",
+  if (epoll_ctl(ss->efd, EPOLL_CTL_ADD, ss->sfd, ss->server_events) == -1) {
+    fprintf(stderr, "could not add sfd to epoll instance %s\n",
             strerror(errno));
-    server_hangup(sfd, efd);
-    return 1;
+    hangup(ss);
+    exit(-1);
   }
   for (;;) {
-    if ((num_ready_events = epoll_wait(efd, events, MAX_EVENTS, -1)) == -1) {
-      fprintf(stderr, "error: epoll_wait on server fd %s\n", strerror(errno));
+    if ((ss->n_ready_events = epoll_wait(ss->efd, ss->events, MAX_EVENTS, -1)) == -1) {
+      fprintf(stderr, "could not wait for sfd on epoll intance%s\n", strerror(errno));
       // strace causes EINTR on epoll_wait
       if (errno == EINTR)
         continue;
-      server_hangup(sfd, efd);
-      exit(1);
+      hangup(ss)
+      exit(-1);
     }
-    for (int n = 0; n < num_ready_events; n++) {
-      if (events[n].events & EPOLLRDHUP) {
-        close(events[n].data.fd);
+    for (int n = 0; n < ss->n_ready_events; n++) {
+      if (ss->events[n].events & EPOLLRDHUP) {
+        close(ss->events[n].data.fd);
         continue;
       }
-      if (events[n].data.fd == sfd) {
-        drain_tcp_accept_backlog(sfd, efd, cev, cnxmgr, client, &cl);
+      if (ss->events[n].data.fd == ss->sfd) {
+        tcp_drain_accept_backlog(ss->sfd, ss->efd, ss->client_events, ss->cm, ss->client, &ss->client_len);
       } else {
-        handle_pending_connx(cnxmgr, events[n].data.fd, efd);
+        handle_pending_cxn(ss->cm, ss->events[n].data.fd, ss->efd);
       }
     }
   }
-  if (close(sfd) == -1) {
-    fprintf(stderr, "error: close on fd: %d %s\n", cfd, strerror(errno));
-  }
+  // shouldn't be hit right now
+  hangup(ss);
   return 0;
 }
