@@ -1,4 +1,4 @@
-#include "server.h"
+include "server.h"
 #include "conn_man.h"
 #include "ctx.h"
 #include "http.h"
@@ -141,13 +141,13 @@ typedef struct server_state {
 
 
 // string used in log messages
-static void ip_addr_to_string(s_state_t *s) {
+static void ipaddr_tostring(s_state_t *s) {
     char buf[20] = {0};
     s->ip_log_string = iptoa(DEFAULT_LISTEN_ADDR, buf);
 }
 
 // string used in log messages
-static void port_num_to_string(s_state_t *s) {
+static void portnum_tostring(s_state_t *s) {
     s->port_log_string = ntohs(s->raw_net_port);
 }
 
@@ -155,12 +155,12 @@ static void set_default_listen_addr_port(s_state_t *s) {
     // server_sin_port and addr might be able to retire
     s->server_sin_port = htons((unsigned short)DEFAULT_LISTEN_PORT);
     s->server_sin_addr_ip.s_addr = htonl(DEFAULT_LISTEN_ADDR);
-    ip_addr_to_string(s);
-    port_num_to_string(s);
+    ipaddr_tostring(s);
+    portnum_tostring(s);
 }
 
 // convert to useable ip from string
-static void ip_string_to_netip(s_state_t *s) {
+static void ipaddrstr_tonetip(s_state_t *s) {
     s->raw_net_ip = atoip(state->listening_on_address, strlen(s->listening_on_address));
 }
 
@@ -171,10 +171,9 @@ void set_listen_addr_port(s_state_t *s, char* ip, char* port) {
         s->ip_log_string = ip;
         s->port_log_string = port;
 
-        ip_string_to_netip(state);
+        ipaddrstr_tonetip(state);
+        s->server_sin_port = htons((unsigned short)port_log_string);
         s->server_sin_addr_ip.s_addr = htonl(s->raw_net_ip);
-        unsigned short port_log_string = atoi(s->port_log_string);
-        s->raw_net_port = htons((unsigned short)port_log_string);
     }
     s->server.sin_family = AF_INET;
     s->server.sin_port = s->server_sin_port;
@@ -183,7 +182,7 @@ void set_listen_addr_port(s_state_t *s, char* ip, char* port) {
 
 // initialize server state
 s_state_t *server_state_initialization(char *ip, char *port) {
-  s_state_t init_s_state = calloc(1, sizeof(s_state_t);
+  s_state_t *init_s_state = calloc(1, sizeof(s_state_t);
   init_s_state->listen_backlog = LISTEN_BACKLOG;
 
   if (init_s_state == NULL) {
