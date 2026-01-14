@@ -120,24 +120,24 @@ void tcp_drain_accept_backlog(int server_fd, int epoll_fd,
 
 // create some sub structs here for client server and epoll
 typedef struct server_state {
-  unsigned int n_recvq_events = 0;
-  unsigned int n_ready_events = 0;
-  unsigned int sfd = 0; 
-  unsigned int cfd = 0;
-  unsigned int efd = 0;
-  unsigned int raw_net_ip = 0;
-  unsigned int raw_net_port = 0;
-  struct sockaddr_in server = {0};
-  struct sockaddr_in client = {0};
+  unsigned int n_recvq_events;
+  unsigned int n_ready_events;
+  unsigned int sfd;
+  unsigned int cfd;
+  unsigned int efd;
+  unsigned int raw_net_ip;
+  unsigned int raw_net_port;
+  struct sockaddr_in server;
+  struct sockaddr_in client;
 
   socklen_t client_len;
   struct epoll_event client_events, server_events, events[MAX_EVENTS];
 
-  struct in_addr server_sin_addr_ip = {0};
-  in_port_t server_sin_port = 0;
+  struct in_addr server_sin_addr_ip;
+  in_port_t server_sin_port;
 
-  char *ip_log_string = 0;
-  char *port_log_string = 0;
+  char *ip_log_string;
+  char *port_log_string;
 
   cnx_manager_t *cm;
 } s_state_t;
