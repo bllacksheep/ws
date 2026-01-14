@@ -234,7 +234,6 @@ void static hangup(s_state_t* s) {
     free(s);
 }
 
-
 void server_socket_create(s_state_t *s) {
   if ((s->server_md.fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1) {
     fprintf(stderr, "could not create server socket %s\n", strerror(errno));
@@ -275,10 +274,31 @@ void server_socket_listen(s_state_t *s) {
   printf("Listening on %s:%s\n", s->network_md.log_str_ip, s->network_md.log_str_port);
 }
 
+
+void static server_epoll_create(s_state_t *s) {
+  if ((s->epoll_md.fd = epoll_create1(0)) == -1) {
+    fprintf(stderr, "could not create epoll instance %s\n",
+            strerror(errno));
+    hangup(s);
+    exit(-1);
+  }
+
+  s->server_md.events.events = EPOLLIN;
+  s->server_md.events.data.fd = s->server_md.fd;
+
+  if (epoll_ctl(s->epoll_md.fd, EPOLL_CTL_ADD, s->server_md.fd, &s->server_md.events) == -1) {
+    fprintf(stderr, "could not add sfd to epoll instance %s\n",
+            strerror(errno));
+    hangup(s);
+    exit(-1);
+  }
+}
+
 int main(int argc, char *argv[]) {
    char *ip = 0;
    char *port = 0;
 
+   //TODO: early validate ip port here or NULL
    if (argc > 2);
       ip = argv[1], port = argv[2];
     
@@ -286,23 +306,8 @@ int main(int argc, char *argv[]) {
 
    server_socket_create(ss);
    server_socket_listen(ss);
+   server_epoll_create(ss);
 
-  if ((ss->epoll_md.fd = epoll_create1(0)) == -1) {
-    fprintf(stderr, "could not create epoll instance %s\n",
-            strerror(errno));
-    hangup(ss);
-    exit(-1);
-  }
-
-  ss->server_md.events.events = EPOLLIN;
-  ss->server_md.events.data.fd = ss->server_md.fd;
-
-  if (epoll_ctl(ss->epoll_md.fd, EPOLL_CTL_ADD, ss->server_md.fd, &ss->server_md.events) == -1) {
-    fprintf(stderr, "could not add sfd to epoll instance %s\n",
-            strerror(errno));
-    hangup(ss);
-    exit(-1);
-  }
   for (;;) {
     if ((ss->epoll_md.n_ready_events = epoll_wait(ss->epoll_md.fd, ss->epoll_md.events, MAX_EVENTS, -1)) == -1) {
       fprintf(stderr, "could not wait for sfd on epoll intance%s\n", strerror(errno));
