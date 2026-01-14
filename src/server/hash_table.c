@@ -5,28 +5,27 @@
 #include <stdlib.h>
 #include <string.h>
 
-
-typedef struct {
+typedef struct Item {
   const uint8_t *key;
   const uint8_t *value;
   uint64_t epoch;
-} Item;
+} tm_item_t;
 
-typedef struct {
-  Item *items[TABLE_SIZE];
+typedef struct ThreadMap {
+  tm_item_t *items[TABLE_SIZE];
   size_t count;
   uint64_t epoch;
-} ThreadMap;
+} thread_map_t;
 
-static _Thread_local ThreadMap tls_map;
+static _Thread_local thread_map_t tls_map;
 static _Thread_local int tls_inited;
 
-ThreadMap* tls_map_get() {
+thread_map_t* tls_map_get() {
 	if (!tls_inited) tls_map_init();
 	return &tls_map;
 }
 
-static inline void tls_map_clear(ThreadMap *tm) {
+static inline void tls_map_clear(thread_map_t *tm) {
   // pre-condition checks in caller
   memset(tm->items, 0, sizeof(tm->items));
   tm->epoch = 1;
@@ -37,7 +36,7 @@ void tls_map_init() {
 
   tls_map.epoch = 1;
   for (int i = 0; i < TABLE_SIZE; i++) {
-    Item *item = calloc(1, sizeof(*item));
+    tm_item_t *item = calloc(1, sizeof(*item));
     if (item == NULL) {
         fprintf(stderr, "could not initialize tls_map\n");
         exit(-1);
@@ -51,17 +50,17 @@ void tls_map_init() {
 // should only works when map version is ahead of items by 1
 void tls_map_insert(const uint8_t *k, const size_t kl, const uint8_t *v) {
 
-  ThreadMap* tm = tls_map_get();
+  thread_map_t* tm = tls_map_get();
 
   uint32_t try = ht_get_hash(k, kl, 0u);
-  Item *item = tm->items[try];
+  tm_item_t *item = tm->items[try];
 
   size_t i = 1;
   // they're all NULL to start, no check
   // if try<map while loop never executed, else keep looking
   while (tm->epoch == item->epoch) {
     try = ht_get_hash(k, kl, i);
-    Item *b = tm->items[try];
+    tm_item_t *b = tm->items[try];
     i++;
   }
   item->key = k;
@@ -73,10 +72,10 @@ void tls_map_insert(const uint8_t *k, const size_t kl, const uint8_t *v) {
 
 const uint8_t *tls_map_lookup(const uint8_t *k, const size_t kl) {
 
-  ThreadMap *tm = tls_map_get();
+  thread_map_t *tm = tls_map_get();
 
   uint32_t try = ht_get_hash(k, kl, 0);
-  Item *item = tm->items[try];
+  tm_item_t *item = tm->items[try];
 
   size_t i = 1;
   while (1) {
