@@ -1,5 +1,5 @@
-#ifndef _HASH_h
-#define _HASH_h
+#ifndef _HASH_H
+#define _HASH_H 1
 
 #include <stdint.h>
 #include <sys/types.h>
@@ -22,11 +22,12 @@ typedef struct {
 } ThreadMap;
 
 static _Thread_local ThreadMap tls_map;
+static _Thread_local int tls_inited;
 
 ThreadMap* tls_map_get(void);
 void tls_map_insert(const uint8_t*, const size_t, const uint8_t*);
 const uint8_t *tls_map_lookup(const uint8_t*, const size_t);
-static inline void tls_map_init();
+void tls_map_init();
 static inline uint32_t ht_hash2(const uint8_t*, const size_t, const uint32_t);
 static inline uint32_t ht_get_hash(const uint8_t*, const size_t, const size_t);
 static inline void tls_map_clear(ThreadMap*);

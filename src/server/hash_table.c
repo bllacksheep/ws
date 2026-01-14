@@ -5,15 +5,26 @@
 #include <stdlib.h>
 #include <string.h>
 
+
+typedef struct {
+  const uint8_t *key;
+  const uint8_t *value;
+  uint64_t epoch;
+} Item;
+
+typedef struct {
+  Item *items[TABLE_SIZE];
+  size_t count;
+  uint64_t epoch;
+} ThreadMap;
+
 static _Thread_local ThreadMap tls_map;
+static _Thread_local int tls_inited;
 
 ThreadMap* tls_map_get() {
-	if (!tls_map) {
-		tls_map_init(&tls_map);
-	}
+	if (!tls_inited) tls_map_init();
 	return &tls_map;
 }
-
 
 static inline void tls_map_clear(ThreadMap *tm) {
   // pre-condition checks in caller
@@ -21,16 +32,20 @@ static inline void tls_map_clear(ThreadMap *tm) {
   tm->epoch = 1;
 }
 
-static inline void tls_map_init(ThreadMap *tm) {
-  tm->epoch = 1;
+void tls_map_init() {
+  if (tls_inited) return;
+
+  tls_map.epoch = 1;
   for (int i = 0; i < TABLE_SIZE; i++) {
     Item *item = calloc(1, sizeof(*item));
-    if (!item) {
-      // handle
+    if (item == NULL) {
+        fprintf(stderr, "could not initialize tls_map\n");
+        exit(-1);
     }
     item->epoch = 1;
-    tm->items[i] = item;
+    tls_map.items[i] = item;
   }
+  tls_inited = 1;
 }
 
 // should only works when map version is ahead of items by 1

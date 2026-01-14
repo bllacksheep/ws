@@ -202,6 +202,11 @@ void set_listen_addr_port(s_state_t *s, char* ip, char* port) {
 // init server, client, epoll here separately
 // initialize server state
 s_state_t *server_state_initialization(char *ip, char *port) {
+    // init_server()
+    // init_event_loop()
+    // init_client()
+    // init_tls()
+    // init_tls_map()
   s_state_t *init_s_state = calloc(1, sizeof(s_state_t));
   init_s_state->server_md.listen_backlog = LISTEN_BACKLOG;
   init_s_state->client_md.client_len = sizeof(init_s_state->client_md.client);
@@ -223,6 +228,7 @@ s_state_t *server_state_initialization(char *ip, char *port) {
   set_listen_addr_port(init_s_state, ip, port);
 
   // initialize local thread storage
+  // probably not a good place to init this but needed for now
   tls_map_init();
   return init_s_state;
 }
