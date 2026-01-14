@@ -291,7 +291,7 @@ int main(int argc, char *argv[]) {
       // strace causes EINTR on epoll_wait
       if (errno == EINTR)
         continue;
-      hangup(ss)
+      hangup(ss);
       exit(-1);
     }
     for (int n = 0; n < ss->n_ready_events; n++) {
