@@ -1,4 +1,4 @@
-#include "server.h"
+#server_state_initializationinclude "server.h"
 #include "conn_man.h"
 #include "ctx.h"
 #include "http.h"
@@ -187,7 +187,7 @@ void set_listen_addr_port(s_state_t *s, char* ip, char* port) {
 // init server, client, epoll here separately
 // initialize server state
 s_state_t *server_state_initialization(char *ip, char *port) {
-  s_state_t *init_s_state = calloc(1, sizeof(s_state_t);
+  s_state_t *init_s_state = calloc(1, sizeof(s_state_t));
   init_s_state->listen_backlog = LISTEN_BACKLOG;
   init_s_state->client_len = sizeof(init_s_state->client);
 
