@@ -164,7 +164,7 @@ static void set_default_listen_addr_port(s_state_t *s) {
 
 // convert to useable ip from string
 static void ipaddrstr_tonetip(s_state_t *s) {
-    s->raw_net_ip = atoip(state->listening_on_address, strlen(s->listening_on_address));
+    s->raw_net_ip = atoip(s->ip_log_string, strlen(s->ip_log_string));
 }
 
 void set_listen_addr_port(s_state_t *s, char* ip, char* port) {
