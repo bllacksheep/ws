@@ -255,7 +255,7 @@ void server_socket_listen(s_state_t *s) {
     hangup(s);
     exit(-1);
   }
-  printf("Listening on %s:%d\n", s->ip_log_string, s->port_log_string);
+  printf("Listening on %s:%s\n", s->ip_log_string, s->port_log_string);
 }
 
 int main(int argc, char *argv[]) {
@@ -277,10 +277,10 @@ int main(int argc, char *argv[]) {
     exit(-1);
   }
 
-  sev.events = EPOLLIN;
-  sev.data.fd = ss->sfd;
+  ss->server_events.events = EPOLLIN;
+  ss->server_events.data.fd = ss->sfd;
 
-  if (epoll_ctl(ss->efd, EPOLL_CTL_ADD, ss->sfd, ss->server_events) == -1) {
+  if (epoll_ctl(ss->efd, EPOLL_CTL_ADD, ss->sfd, &ss->server_events) == -1) {
     fprintf(stderr, "could not add sfd to epoll instance %s\n",
             strerror(errno));
     hangup(ss);
