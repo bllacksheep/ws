@@ -122,6 +122,7 @@ void tcp_drain_accept_backlog(int server_fd, int epoll_fd,
 typedef struct server_state {
   unsigned int n_recvq_events;
   unsigned int n_ready_events;
+  unsigned int listen_backlog;
   unsigned int sfd;
   unsigned int cfd;
   unsigned int efd;
@@ -209,7 +210,7 @@ s_state_t *server_state_initialization(char *ip, char *port) {
 
   // initialize local thread storage
   tls_map_init();
-  return init_s_state
+  return init_s_state;
 }
 
 void static hangup(s_state_t* s) {
