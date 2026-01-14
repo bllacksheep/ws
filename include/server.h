@@ -1,7 +1,7 @@
 // rfc 6455
 
-#ifndef _WS_SERVER_h
-#define _WS_SERVER_h 1
+#ifndef _WS_SERVER_H
+#define _WS_SERVER_H 1
 
 #define LISTEN_BACKLOG 1024
 #define MAX_EVENTS 1024
