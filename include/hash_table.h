@@ -10,8 +10,6 @@
 
 typedef struct Item tm_item_t;
 typedef struct ThreadMap thread_map_t;
-static _Thread_local thread_map_t tls_map;
-static _Thread_local int tls_inited;
 
 thread_map_t* tls_map_get(void);
 void tls_map_init(void);
