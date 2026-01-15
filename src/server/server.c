@@ -309,44 +309,56 @@ s_state_t *server_state_initialization(char *ip, char *port) {
   return init_s_state;
 }
 
-int main(int argc, char *argv[]) {
-  char *ip = 0;
-  char *port = 0;
 
-  // TODO: early validate ip port here or NULL
-  if (argc > 2)
-    ;
-  ip = argv[1], port = argv[2];
-
-  s_state_t *ss = server_state_initialization(ip, port);
+void server_state_start(char* ip, char* port) {
+  s_state_t *s = server_state_initialization(ip, port);
 
   for (;;) {
-    if ((ss->epoll_md.n_ready_events = epoll_wait(
-             ss->epoll_md.fd, ss->epoll_md.events, MAX_EVENTS, -1)) == -1) {
+    if ((s->epoll_md.n_ready_events = epoll_wait(
+             s->epoll_md.fd, s->epoll_md.events, MAX_EVENTS, -1)) == -1) {
       fprintf(stderr, "could not wait for sfd on epoll intance%s\n",
               strerror(errno));
       // strace causes EINTR on epoll_wait
       if (errno == EINTR)
         continue;
-      hangup(ss);
+      hangup(s);
       exit(-1);
     }
-    for (int n = 0; n < ss->epoll_md.n_ready_events; n++) {
-      if (ss->epoll_md.events[n].events & EPOLLRDHUP) {
-        close(ss->epoll_md.events[n].data.fd);
+    for (int n = 0; n < s->epoll_md.n_ready_events; n++) {
+      if (s->epoll_md.events[n].events & EPOLLRDHUP) {
+        close(s->epoll_md.events[n].data.fd);
         continue;
       }
-      if (ss->epoll_md.events[n].data.fd == ss->server_md.fd) {
+      if (s->epoll_md.events[n].data.fd == s->server_md.fd) {
         tcp_drain_accept_backlog(
-            ss->server_md.fd, ss->epoll_md.fd, ss->client_md.events, ss->cm,
-            ss->client_md.client, &ss->client_md.client_len);
+            s->server_md.fd, s->epoll_md.fd, s->client_md.events, s->cm,
+            s->client_md.client, &s->client_md.client_len);
       } else {
-        handle_pending_cxn(ss->cm, ss->epoll_md.events[n].data.fd,
-                           ss->epoll_md.fd);
+        handle_pending_cxn(s->cm, s->epoll_md.events[n].data.fd,
+                           s->epoll_md.fd);
       }
     }
   }
-  // shouldn't be hit right now
-  hangup(ss);
+}
+
+void *validate_ip_addr(char *ip) {
+    return ip;
+}
+
+void *validate_port_addr(char *port) {
+    return port;
+}
+
+int main(int argc, char *argv[]) {
+  char *ip = 0;
+  char *port = 0;
+
+  if (argc > 2) {
+    ip = validate_ip_addr(argv[1]);
+    port = validate_port_addr(argv[2]);
+  }
+
+  server_state_start(ip, port);
+
   return 0;
 }
