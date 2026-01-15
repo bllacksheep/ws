@@ -1,8 +1,8 @@
 #include "server.h"
 #include "conn_man.h"
 #include "ctx.h"
-#include "http.h"
 #include "hash_table.h"
+#include "http.h"
 #include "ip.h"
 #include <arpa/inet.h>
 #include <asm-generic/errno.h>
@@ -20,9 +20,8 @@
 #include <unistd.h>
 // clean these up check bin size
 
-
 void handle_pending_cxn(cnx_manager_t *cm, unsigned int cfd,
-                          unsigned int epfd) {
+                        unsigned int epfd) {
 
   ctx_t *ctx = cm->cnx[cfd];
 
@@ -84,7 +83,6 @@ int static setnonblocking(unsigned int fd) {
   }
   return 0;
 }
-
 
 void tcp_drain_accept_backlog(int server_fd, int epoll_fd,
                               struct epoll_event client_event,
@@ -157,54 +155,55 @@ typedef struct server_state {
   cnx_manager_t *cm;
 } s_state_t;
 
-static void hangup(s_state_t* s) {
-    close(s->server_md.fd);
-    close(s->epoll_md.fd);
-    free(s->cm);
-    free(s);
+static void hangup(s_state_t *s) {
+  close(s->server_md.fd);
+  close(s->epoll_md.fd);
+  free(s->cm);
+  free(s);
 }
 
 // string used in log messages
 static void ipaddr_tostring(s_state_t *s) {
-    char buf[20] = {0};
-    s->network_md.log_str_ip = strdup(iptoa(DEFAULT_LISTEN_ADDR, buf));
+  char buf[20] = {0};
+  s->network_md.log_str_ip = strdup(iptoa(DEFAULT_LISTEN_ADDR, buf));
 }
 
 // string used in log messages
 static void portnum_tostring(s_state_t *s) {
-    char buf[10] = {0};
-    sprintf(buf, "%d", ntohs(s->network_md.server_sin_port));
-    s->network_md.log_str_port = strdup(buf);
+  char buf[10] = {0};
+  sprintf(buf, "%d", ntohs(s->network_md.server_sin_port));
+  s->network_md.log_str_port = strdup(buf);
 }
 
 static void set_default_listen_addr_port(s_state_t *s) {
-    // server_sin_port and addr might be able to retire
-    s->network_md.server_sin_port = htons((unsigned short)DEFAULT_LISTEN_PORT);
-    s->network_md.server_sin_addr_ip.s_addr = htonl(DEFAULT_LISTEN_ADDR);
-    ipaddr_tostring(s);
-    portnum_tostring(s);
+  // server_sin_port and addr might be able to retire
+  s->network_md.server_sin_port = htons((unsigned short)DEFAULT_LISTEN_PORT);
+  s->network_md.server_sin_addr_ip.s_addr = htonl(DEFAULT_LISTEN_ADDR);
+  ipaddr_tostring(s);
+  portnum_tostring(s);
 }
 
 // convert to useable ip from string
 static void ipaddrstr_tonetip(s_state_t *s) {
-    s->network_md.raw_net_ip = atoip(s->network_md.log_str_ip, strlen(s->network_md.log_str_ip));
+  s->network_md.raw_net_ip =
+      atoip(s->network_md.log_str_ip, strlen(s->network_md.log_str_ip));
 }
 
-static void set_listen_addr_port(s_state_t *s, char* ip, char* port) {
-    if (ip == NULL && port == NULL) {
-        set_default_listen_addr_port(s);
-    } else {
-        s->network_md.log_str_ip = ip;
-        s->network_md.log_str_port = port;
+static void set_listen_addr_port(s_state_t *s, char *ip, char *port) {
+  if (ip == NULL && port == NULL) {
+    set_default_listen_addr_port(s);
+  } else {
+    s->network_md.log_str_ip = ip;
+    s->network_md.log_str_port = port;
 
-        ipaddrstr_tonetip(s);
-        unsigned short port_atoi = atoi(port);
-        s->network_md.server_sin_port = htons(port_atoi);
-        s->network_md.server_sin_addr_ip.s_addr = htonl(s->network_md.raw_net_ip);
-    }
-    s->server_md.server.sin_family = AF_INET;
-    s->server_md.server.sin_port = s->network_md.server_sin_port;
-    s->server_md.server.sin_addr = s->network_md.server_sin_addr_ip;
+    ipaddrstr_tonetip(s);
+    unsigned short port_atoi = atoi(port);
+    s->network_md.server_sin_port = htons(port_atoi);
+    s->network_md.server_sin_addr_ip.s_addr = htonl(s->network_md.raw_net_ip);
+  }
+  s->server_md.server.sin_family = AF_INET;
+  s->server_md.server.sin_port = s->network_md.server_sin_port;
+  s->server_md.server.sin_addr = s->network_md.server_sin_addr_ip;
 }
 
 static void server_socket_create(s_state_t *s) {
@@ -215,42 +214,47 @@ static void server_socket_create(s_state_t *s) {
   }
 
   if (setnonblocking(s->server_md.fd) == -1) {
-    fprintf(stderr, "could not set server sock SOCK_NONBLOCK on fd: %d %s\n", s->server_md.fd,
-            strerror(errno));
+    fprintf(stderr, "could not set server sock SOCK_NONBLOCK on fd: %d %s\n",
+            s->server_md.fd, strerror(errno));
     hangup(s);
     exit(-1);
   }
 
   int opt = 1;
-  if (setsockopt(s->server_md.fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
-    fprintf(stderr, "could not set server sock SOL_SOCKET SO_REUSEADDR %s\n", strerror(errno));
+  if (setsockopt(s->server_md.fd, SOL_SOCKET, SO_REUSEADDR, &opt,
+                 sizeof(opt)) == -1) {
+    fprintf(stderr, "could not set server sock SOL_SOCKET SO_REUSEADDR %s\n",
+            strerror(errno));
     hangup(s);
     exit(-1);
   }
 }
 
-//TODO:
-// server size should be stored in server
-// log should be fetched via function
+// TODO:
+//  server size should be stored in server
+//  log should be fetched via function
 static void server_socket_listen(s_state_t *s) {
-  if (bind(s->server_md.fd, (struct sockaddr *)&s->server_md.server, sizeof(s->server_md.server)) == -1) {
+  if (bind(s->server_md.fd, (struct sockaddr *)&s->server_md.server,
+           sizeof(s->server_md.server)) == -1) {
     fprintf(stderr, "could not bind server sock %s\n", strerror(errno));
     hangup(s);
     exit(-1);
   }
 
   if (listen(s->server_md.fd, s->server_md.listen_backlog) == -1) {
-    fprintf(stderr, "could not listen server socket on %s:%s %s\n", s->network_md.log_str_ip, s->network_md.log_str_port, strerror(errno));
+    fprintf(stderr, "could not listen server socket on %s:%s %s\n",
+            s->network_md.log_str_ip, s->network_md.log_str_port,
+            strerror(errno));
     hangup(s);
     exit(-1);
   }
-  printf("Listening on %s:%s\n", s->network_md.log_str_ip, s->network_md.log_str_port);
+  printf("Listening on %s:%s\n", s->network_md.log_str_ip,
+         s->network_md.log_str_port);
 }
 
 static void server_epoll_create(s_state_t *s) {
   if ((s->epoll_md.fd = epoll_create1(0)) == -1) {
-    fprintf(stderr, "could not create epoll instance %s\n",
-            strerror(errno));
+    fprintf(stderr, "could not create epoll instance %s\n", strerror(errno));
     hangup(s);
     exit(-1);
   }
@@ -258,7 +262,8 @@ static void server_epoll_create(s_state_t *s) {
   s->server_md.events.events = EPOLLIN;
   s->server_md.events.data.fd = s->server_md.fd;
 
-  if (epoll_ctl(s->epoll_md.fd, EPOLL_CTL_ADD, s->server_md.fd, &s->server_md.events) == -1) {
+  if (epoll_ctl(s->epoll_md.fd, EPOLL_CTL_ADD, s->server_md.fd,
+                &s->server_md.events) == -1) {
     fprintf(stderr, "could not add sfd to epoll instance %s\n",
             strerror(errno));
     hangup(s);
@@ -269,11 +274,11 @@ static void server_epoll_create(s_state_t *s) {
 // init server, client, epoll here separately
 // initialize server state
 s_state_t *server_state_initialization(char *ip, char *port) {
-    // init_server()
-    // init_event_loop()
-    // init_client()
-    // init_tls()
-    // init_tls_map()
+  // init_server()
+  // init_event_loop()
+  // init_client()
+  // init_tls()
+  // init_tls_map()
   s_state_t *init_s_state = calloc(1, sizeof(s_state_t));
   init_s_state->server_md.listen_backlog = LISTEN_BACKLOG;
   init_s_state->client_md.client_len = sizeof(init_s_state->client_md.client);
@@ -304,20 +309,22 @@ s_state_t *server_state_initialization(char *ip, char *port) {
   return init_s_state;
 }
 
-
 int main(int argc, char *argv[]) {
-   char *ip = 0;
-   char *port = 0;
+  char *ip = 0;
+  char *port = 0;
 
-   //TODO: early validate ip port here or NULL
-   if (argc > 2);
-      ip = argv[1], port = argv[2];
-    
-   s_state_t *ss = server_state_initialization(ip, port);
+  // TODO: early validate ip port here or NULL
+  if (argc > 2)
+    ;
+  ip = argv[1], port = argv[2];
+
+  s_state_t *ss = server_state_initialization(ip, port);
 
   for (;;) {
-    if ((ss->epoll_md.n_ready_events = epoll_wait(ss->epoll_md.fd, ss->epoll_md.events, MAX_EVENTS, -1)) == -1) {
-      fprintf(stderr, "could not wait for sfd on epoll intance%s\n", strerror(errno));
+    if ((ss->epoll_md.n_ready_events = epoll_wait(
+             ss->epoll_md.fd, ss->epoll_md.events, MAX_EVENTS, -1)) == -1) {
+      fprintf(stderr, "could not wait for sfd on epoll intance%s\n",
+              strerror(errno));
       // strace causes EINTR on epoll_wait
       if (errno == EINTR)
         continue;
@@ -330,9 +337,12 @@ int main(int argc, char *argv[]) {
         continue;
       }
       if (ss->epoll_md.events[n].data.fd == ss->server_md.fd) {
-        tcp_drain_accept_backlog(ss->server_md.fd, ss->epoll_md.fd, ss->client_md.events, ss->cm, ss->client_md.client, &ss->client_md.client_len);
+        tcp_drain_accept_backlog(
+            ss->server_md.fd, ss->epoll_md.fd, ss->client_md.events, ss->cm,
+            ss->client_md.client, &ss->client_md.client_len);
       } else {
-        handle_pending_cxn(ss->cm, ss->epoll_md.events[n].data.fd, ss->epoll_md.fd);
+        handle_pending_cxn(ss->cm, ss->epoll_md.events[n].data.fd,
+                           ss->epoll_md.fd);
       }
     }
   }
