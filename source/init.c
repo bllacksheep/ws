@@ -1,4 +1,4 @@
-#include "server.h"
+#include "init.h"
 #include "conn_man.h"
 #include "ctx.h"
 #include "hash_table.h"
@@ -18,9 +18,69 @@
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
-// clean these up check bin size
 
-void handle_pending_cxn(cnx_manager_t *cm, unsigned int cfd,
+
+typedef struct server_state s_state_t;
+
+
+static void server_epoll_create(s_state_t *);
+static void server_socket_listen(s_state_t *);
+static void server_socket_create(s_state_t *);
+static void set_listen_addr_port(s_state_t *, char *, char *);
+static void ipaddrstr_tonetip(s_state_t *);
+static void set_default_listen_addr_port(s_state_t *);
+static void ipaddr_tostring(s_state_t *);
+static void portnum_tostring(s_state_t *);
+static void hangup(s_state_t *);
+static int setnonblocking(unsigned int);
+static void tcp_drain_accept_backlog(int, int,
+                              struct epoll_event,
+                              cnx_manager_t *, struct sockaddr_in,
+                              socklen_t *);
+static void handle_pending_cxn(cnx_manager_t *, unsigned int,
+                        unsigned int);
+
+struct epoll_metadata {
+  struct epoll_event events[MAX_EVENTS];
+  unsigned int n_recvq_events;
+  unsigned int n_ready_events;
+  unsigned int fd;
+};
+
+struct client_metadata {
+  struct epoll_event events;
+  struct sockaddr_in client;
+  socklen_t client_len;
+  unsigned int fd;
+};
+
+struct server_metadata {
+  struct epoll_event events;
+  unsigned int listen_backlog;
+  struct sockaddr_in server;
+  unsigned int fd;
+};
+
+struct network_metadata {
+  struct in_addr server_sin_addr_ip;
+  in_port_t server_sin_port;
+  unsigned int raw_net_ip;
+  unsigned int raw_net_port;
+  char *log_str_ip;
+  char *log_str_port;
+};
+
+typedef struct server_state {
+  struct epoll_metadata epoll_md;
+  struct client_metadata client_md;
+  struct server_metadata server_md;
+  struct network_metadata network_md;
+
+  cnx_manager_t *cm;
+} s_state_t;
+
+
+static void handle_pending_cxn(cnx_manager_t *cm, unsigned int cfd,
                         unsigned int epfd) {
 
   ctx_t *ctx = cm->cnx[cfd];
@@ -65,7 +125,15 @@ void handle_pending_cxn(cnx_manager_t *cm, unsigned int cfd,
   return;
 }
 
-int static setnonblocking(unsigned int fd) {
+
+static void hangup(s_state_t *s) {
+  close(s->server_md.fd);
+  close(s->epoll_md.fd);
+  free(s->cm);
+  free(s);
+}
+
+static int setnonblocking(unsigned int fd) {
   int flags = fcntl(fd, F_GETFL);
 
   if (!(flags & O_NONBLOCK)) {
@@ -77,7 +145,7 @@ int static setnonblocking(unsigned int fd) {
   return 0;
 }
 
-void tcp_drain_accept_backlog(int server_fd, int epoll_fd,
+static void tcp_drain_accept_backlog(int server_fd, int epoll_fd,
                               struct epoll_event client_event,
                               cnx_manager_t *cm, struct sockaddr_in client_addr,
                               socklen_t *client_addr_len) {
@@ -105,52 +173,6 @@ void tcp_drain_accept_backlog(int server_fd, int epoll_fd,
       perror("could not add client fd to epoll instance list");
     }
   }
-}
-
-struct epoll_metadata {
-  struct epoll_event events[MAX_EVENTS];
-  unsigned int n_recvq_events;
-  unsigned int n_ready_events;
-  unsigned int fd;
-};
-
-struct client_metadata {
-  struct epoll_event events;
-  struct sockaddr_in client;
-  socklen_t client_len;
-  unsigned int fd;
-};
-
-struct server_metadata {
-  struct epoll_event events;
-  unsigned int listen_backlog;
-  struct sockaddr_in server;
-  unsigned int fd;
-};
-
-struct network_metadata {
-  struct in_addr server_sin_addr_ip;
-  in_port_t server_sin_port;
-  unsigned int raw_net_ip;
-  unsigned int raw_net_port;
-  char *log_str_ip;
-  char *log_str_port;
-};
-
-typedef struct server_state {
-  struct epoll_metadata epoll_md;
-  struct client_metadata client_md;
-  struct server_metadata server_md;
-  struct network_metadata network_md;
-
-  cnx_manager_t *cm;
-} s_state_t;
-
-static void hangup(s_state_t *s) {
-  close(s->server_md.fd);
-  close(s->epoll_md.fd);
-  free(s->cm);
-  free(s);
 }
 
 // string used in log messages
@@ -197,6 +219,7 @@ static void set_listen_addr_port(s_state_t *s, char *ip, char *port) {
   s->server_md.server.sin_addr = s->network_md.server_sin_addr_ip;
 }
 
+
 static void server_socket_create(s_state_t *s) {
   if ((s->server_md.fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1) {
     perror("could not create server socket");
@@ -239,6 +262,7 @@ static void server_socket_listen(s_state_t *s) {
          s->network_md.log_str_port);
 }
 
+
 static void server_epoll_create(s_state_t *s) {
   if ((s->epoll_md.fd = epoll_create1(0)) == -1) {
     perror("could not create epoll instance");
@@ -259,7 +283,7 @@ static void server_epoll_create(s_state_t *s) {
 
 // init server, client, epoll here separately
 // initialize server state
-s_state_t *server_state_initialization(char *ip, char *port) {
+static s_state_t *server_state_initialization(char *ip, char *port) {
   // init_server()
   // init_event_loop()
   // init_client()
@@ -294,7 +318,6 @@ s_state_t *server_state_initialization(char *ip, char *port) {
   server_epoll_create(init_s_state);
   return init_s_state;
 }
-
 
 void server_state_start(char* ip, char* port) {
   s_state_t *s = server_state_initialization(ip, port);
@@ -337,19 +360,4 @@ void *validate_ip_addr(char *ip) {
 
 void *validate_port_addr(char *port) {
     return port; // or NULL
-}
-
-int main(int argc, char *argv[]) {
-  char *ip = 0;
-  char *port = 0;
-
-  if (argc > 2) {
-    ip = validate_ip_addr(argv[1]);
-    port = validate_port_addr(argv[2]);
-  }
-
-  // could take config or options
-  server_state_start(ip, port);
-
-  return 0;
 }

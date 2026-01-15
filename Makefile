@@ -2,8 +2,8 @@ CC = gcc
 CFLAGS = -Iinclude -g
 LDFLAGS = -lcriterion
 
-SRC = src/server
-OBJ = build/server.o build/conn_man.o build/http.o build/ip.o build/parser.o build/hash_table.o
+SRC = source
+OBJ = build/server.o build/conn_man.o build/http.o build/ip.o build/parser.o build/hash_table.o build/init.o
 
 all: server_db test
 

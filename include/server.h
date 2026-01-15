@@ -1,5 +1,3 @@
-// rfc 6455
-
 #ifndef _WS_SERVER_H
 #define _WS_SERVER_H 1
 
