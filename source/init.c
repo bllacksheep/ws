@@ -1,8 +1,6 @@
 #include "init.h"
 #include "conn_man.h"
-#include "ctx.h"
 #include "hash_table.h"
-#include "http.h"
 #include "ip.h"
 #include <arpa/inet.h>
 #include <asm-generic/errno.h>
@@ -10,7 +8,6 @@
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
-#include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -78,53 +75,6 @@ typedef struct server_state {
 
   cnx_manager_t *cm;
 } s_state_t;
-
-
-static void handle_pending_cxn(cnx_manager_t *cm, unsigned int cfd,
-                        unsigned int epfd) {
-
-  ctx_t *ctx = cm->cnx[cfd];
-  ssize_t bytes_read = recv(cfd, ctx->buf, MAX_REQ_SIZE, 0);
-
-  // TODO: if 0 clean up allocated resources
-  if (bytes_read == 0) {
-    // 0 EOF == tcp CLOSE_WAIT
-    if (epoll_ctl(epfd, EPOLL_CTL_DEL, cfd, NULL) == -1) {
-      perror("could not remove fd from interest list");
-    }
-    close(cfd);
-  } else if (bytes_read == -1) {
-    return;
-  } else {
-    /*
-     * read get's you a byte steam
-     * make sense of byte steam tokenize handle error states early here
-     * validate the lexed content with parsing handle error states here
-     *
-     * http validation (supporting small subset)
-     * use the parsed input to build a context or return error
-     * */
-    ctx->len = bytes_read;
-    http_handle_raw_request_stream(ctx);
-
-    // partial write handling to be implemented
-    size_t n = strlen((char *)ctx->http->response->buf);
-    if (n > 0) {
-      ssize_t bytes_written = write(cfd, ctx->http->response->buf, n);
-      if (bytes_written == -1) {
-        perror("could not write on fd");
-        return;
-      }
-      if (bytes_written != (ssize_t)n) {
-        fprintf(stderr, "error: partial write on fd: %d, %s\n", cfd,
-                strerror(errno));
-        return;
-      }
-    }
-  }
-  return;
-}
-
 
 static void hangup(s_state_t *s) {
   close(s->server_md.fd);
@@ -298,8 +248,8 @@ static s_state_t *server_state_initialization(char *ip, char *port) {
     exit(-1);
   }
 
-  // initialize connection manager
-  init_s_state->cm = cnx_manager_create();
+  // initialize a connection manager
+  init_s_state->cm = cm_create_cm();
 
   if (init_s_state->cm == NULL) {
     fprintf(stderr, "could not create server connection manager");
@@ -310,7 +260,6 @@ static s_state_t *server_state_initialization(char *ip, char *port) {
   set_listen_addr_port(init_s_state, ip, port);
 
   // initialize local thread storage
-  // probably not a good place to init this but needed for now
   tls_map_init();
 
   server_socket_create(init_s_state);
@@ -348,14 +297,13 @@ void server_start_event_loop(char* ip, char* port) {
             s->server_md.fd, s->epoll_md.fd, s->client_md.events, s->cm,
             s->client_md.client, &s->client_md.client_len);
       } else {
-        handle_pending_cxn(s->cm, s->epoll_md.events[n].data.fd,
+        cm_manage_incoming_cnx(s->cm, s->epoll_md.events[n].data.fd,
                            s->epoll_md.fd);
       }
     }
   }
 }
 
-// will be wrapped in a a validate fn
 void *server_validate_ip_addr(char *ip) {
     return ip; // or NULL
 }

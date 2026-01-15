@@ -1,12 +1,30 @@
 #include "conn_man.h"
 #include "ctx.h"
+#include <stdio.h>
+#include <errno.h>
+#include <string.h>
+#include <stdlib.h>
 
-#define CNX_MANAGER_BYTE_STREAM_IN 1024
+typedef struct conn {
 
-cnx_manager_t *cnx_manager_create() {
+} cnx_t;
+
+typedef struct conn_man {
+  cnx_t **cnx;
+  size_t len;
+  size_t cap;
+  size_t allocated;
+} cnx_manager_t;
+
+static void cm_add_cnx(cnx_manager_t *, int);
+static void cm_track_cnx(cnx_manager_t *, int);
+static void cm_remove_cnx(cnx_manager_t *, int);
+
+cnx_manager_t *cm_create_cm() {
   cnx_manager_t *cm = (cnx_manager_t *)malloc(sizeof(cnx_manager_t));
   if (cm == NULL) {
-    // handle
+      perror("could not create connection manager");
+      exit(-1);
   }
   cm->cnx = (ctx_t **)malloc(sizeof(ctx_t *) * CNX_MANAGER_CONN_POOL);
 
@@ -23,7 +41,7 @@ cnx_manager_t *cnx_manager_create() {
   return cm;
 }
 
-static void cnx_manager_cnx_add(cnx_manager_t *cm, int cfd) {
+static void cm_add_cnx(cnx_manager_t *cm, int cfd) {
   if (cm->allocated >= CNX_MANAGER_DEALLOC_THRESHOLD) {
   }
   if (cm->cnx[cfd] == NULL) {
@@ -100,7 +118,7 @@ static void cnx_manager_cnx_add(cnx_manager_t *cm, int cfd) {
   // }
 }
 
-void cnx_manager_cnx_track(cnx_manager_t *cm, int cfd) {
+static void cm_track_cnx(cnx_manager_t *cm, int cfd) {
   // check the cnx and it's status
   cnx_manager_cnx_add(cm, cfd);
 }
@@ -109,3 +127,49 @@ void cnx_manager_cnx_track(cnx_manager_t *cm, int cfd) {
 void cnx_manager_cnx_remove(cnx_manager_t *cm, int cfd) {}
 // fetches cnx
 // cnx_ctx_t *cnx_manager_get(cnx_manager_t *cm, int cfd) {}
+//
+
+void cm_manage_incoming_cnx(cnx_manager_t *cm, unsigned int cfd,
+                        unsigned int epfd) {
+
+  ctx_t *ctx = cm->cnx[cfd];
+  ssize_t bytes_read = recv(cfd, ctx->buf, MAX_REQ_SIZE, 0);
+
+  // TODO: if 0 clean up allocated resources
+  if (bytes_read == 0) {
+    // 0 EOF == tcp CLOSE_WAIT
+    if (epoll_ctl(epfd, EPOLL_CTL_DEL, cfd, NULL) == -1) {
+      perror("could not remove fd from interest list");
+    }
+    close(cfd);
+  } else if (bytes_read == -1) {
+    return;
+  } else {
+    /*
+     * read get's you a byte steam
+     * make sense of byte steam tokenize handle error states early here
+     * validate the lexed content with parsing handle error states here
+     *
+     * http validation (supporting small subset)
+     * use the parsed input to build a context or return error
+     * */
+    ctx->len = bytes_read;
+    http_handle_raw_request_stream(ctx);
+
+    // partial write handling to be implemented
+    size_t n = strlen((char *)ctx->http->response->buf);
+    if (n > 0) {
+      ssize_t bytes_written = write(cfd, ctx->http->response->buf, n);
+      if (bytes_written == -1) {
+        perror("could not write on fd");
+        return;
+      }
+      if (bytes_written != (ssize_t)n) {
+        fprintf(stderr, "error: partial write on fd: %d, %s\n", cfd,
+                strerror(errno));
+        return;
+      }
+    }
+  }
+  return;
+}
