@@ -57,7 +57,7 @@ unsigned int validate_path(const uint8_t *p) {
   return 0;
 }
 
-static void validate_method(http_t *c, uint8_t *m) {
+static void validate_method(http_ctx_t *c, uint8_t *m) {
 
   const char *http_request_method = (const char *)m;
 
@@ -76,7 +76,7 @@ static void validate_method(http_t *c, uint8_t *m) {
   }
 }
 
-static void parser_parse_http_req_semantics(http_t *ctx, stream_token_t *stream,
+static void parser_parse_http_req_semantics(http_ctx_t *ctx, stream_token_t *stream,
                                             size_t token_count) {
 
 
@@ -100,7 +100,7 @@ static void parser_parse_http_req_semantics(http_t *ctx, stream_token_t *stream,
 
   memset(semantic_token, 0, sizeof(semantic_token_t) * TOKEN_COUNT);
 
-  tls_map.epoch++;
+  tls_inc_map();
 
   for (int32_t i = 0; i < token_count; i++) {
     stream_token_t current_token = stream[i];
@@ -226,7 +226,7 @@ static void parser_parse_http_req_semantics(http_t *ctx, stream_token_t *stream,
   }
 }
 
-void parser_parse_http_request(http_t *ctx, const uint8_t *byte_stream) {
+void parser_parse_http_request(http_ctx_t *ctx, const uint8_t *byte_stream) {
   size_t token_count = strlen((const char *)byte_stream);
   stream_token_t *token_stream =
       (stream_token_t *)malloc(sizeof(stream_token_t) * token_count);

@@ -20,9 +20,14 @@ typedef struct ThreadMap {
 static _Thread_local thread_map_t tls_map;
 static _Thread_local int tls_inited;
 
-thread_map_t* tls_map_get() {
+thread_map_t* tls_map_get(void) {
 	if (!tls_inited) tls_map_init();
 	return &tls_map;
+}
+
+void tls_inc_map(void) {
+    thread_map_t *tm = tls_map_get();
+    tm->epoch++;
 }
 
 static inline void tls_map_clear(thread_map_t *tm) {
@@ -31,7 +36,7 @@ static inline void tls_map_clear(thread_map_t *tm) {
   tm->epoch = 1;
 }
 
-void tls_map_init() {
+void tls_map_init(void) {
   if (tls_inited) return;
 
   tls_map.epoch = 1;

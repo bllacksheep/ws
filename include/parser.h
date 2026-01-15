@@ -54,12 +54,12 @@ typedef struct {
   uint8_t *method;
   uint8_t *path;
   uint8_t *version;
-  Item *items[TABLE_SIZE];
+  tm_item_t *items[TABLE_SIZE];
   uint8_t *body;
 } raw_request_t;
 
 static void parser_parse_http_byte_stream(stream_token_t *, const uint8_t *,
                                           size_t);
-static void parser_parse_http_req_semantics(http_t *, stream_token_t *, size_t);
-void parser_parse_http_request(http_t *, const uint8_t *);
+static void parser_parse_http_req_semantics(http_ctx_t *, stream_token_t *, size_t);
+void parser_parse_http_request(http_ctx_t *, const uint8_t *);
 #endif

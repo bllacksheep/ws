@@ -41,7 +41,7 @@ static void cnx_manager_cnx_add(cnx_manager_t *cm, int cfd) {
     // handle
   }
 
-  cm->cnx[cfd]->http = (http_t *)malloc(sizeof(http_t));
+  cm->cnx[cfd]->http = (http_ctx_t *)malloc(sizeof(http_ctx_t));
   if (cm->cnx[cfd]->http == NULL) {
     // handle
   }
