@@ -26,7 +26,7 @@ void handle_pending_cxn(cnx_manager_t *cm, unsigned int cfd,
 
   ctx_t *ctx = cm->cnx[cfd];
 
-  ssize_t bytes_read = recvfrom(cfd, ctx->buf, MAX_REQ_SIZE, NULL, NULL, NULL);
+  ssize_t bytes_read = recv(cfd, ctx->buf, MAX_REQ_SIZE, 0);
   // TODO: if 0 clean up allocated resources
   if (bytes_read == 0) {
     // 0 EOF == tcp CLOSE_WAIT
