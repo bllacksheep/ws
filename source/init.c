@@ -22,7 +22,6 @@
 
 typedef struct server_state s_state_t;
 
-
 static void server_epoll_create(s_state_t *);
 static void server_socket_listen(s_state_t *);
 static void server_socket_create(s_state_t *);
@@ -39,6 +38,7 @@ static void tcp_drain_accept_backlog(int, int,
                               socklen_t *);
 static void handle_pending_cxn(cnx_manager_t *, unsigned int,
                         unsigned int);
+
 
 struct epoll_metadata {
   struct epoll_event events[MAX_EVENTS];
@@ -319,8 +319,9 @@ static s_state_t *server_state_initialization(char *ip, char *port) {
   return init_s_state;
 }
 
-void server_state_start(char* ip, char* port) {
+void server_start_event_loop(char* ip, char* port) {
   s_state_t *s = server_state_initialization(ip, port);
+
   if (s == NULL) {
       fprintf(stderr, "could not create server state");
       hangup(s);
@@ -354,10 +355,11 @@ void server_state_start(char* ip, char* port) {
   }
 }
 
-void *validate_ip_addr(char *ip) {
+// will be wrapped in a a validate fn
+void *server_validate_ip_addr(char *ip) {
     return ip; // or NULL
 }
 
-void *validate_port_addr(char *port) {
+void *server_validate_port_addr(char *port) {
     return port; // or NULL
 }
