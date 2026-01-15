@@ -167,12 +167,14 @@ static void hangup(s_state_t* s) {
 // string used in log messages
 static void ipaddr_tostring(s_state_t *s) {
     char buf[20] = {0};
-    s->network_md.log_str_ip = iptoa(DEFAULT_LISTEN_ADDR, buf);
+    s->network_md.log_str_ip = strdup(iptoa(DEFAULT_LISTEN_ADDR, buf));
 }
 
 // string used in log messages
 static void portnum_tostring(s_state_t *s) {
-    s->network_md.log_str_port = ntohs(s->network_md.raw_net_port);
+    char buf[10] = {0};
+    sprintf(buf, "%d", ntohs(s->network_md.server_sin_port));
+    s->network_md.log_str_port = strdup(buf);
 }
 
 static void set_default_listen_addr_port(s_state_t *s) {
@@ -196,7 +198,8 @@ static void set_listen_addr_port(s_state_t *s, char* ip, char* port) {
         s->network_md.log_str_port = port;
 
         ipaddrstr_tonetip(s);
-        s->network_md.server_sin_port = htons((unsigned short)s->network_md.log_str_port);
+        unsigned short port_atoi = atoi(port);
+        s->network_md.server_sin_port = htons(port_atoi);
         s->network_md.server_sin_addr_ip.s_addr = htonl(s->network_md.raw_net_ip);
     }
     s->server_md.server.sin_family = AF_INET;
