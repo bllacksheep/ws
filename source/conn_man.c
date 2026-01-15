@@ -26,13 +26,10 @@ cnx_manager_t *cm_create_cm() {
       perror("could not create connection manager");
       exit(-1);
   }
-  cm->cnx = (ctx_t **)malloc(sizeof(ctx_t *) * CNX_MANAGER_CONN_POOL);
+  cm->cnx = (cxn_t **)malloc(sizeof(cxn_t *) * CNX_MANAGER_CONN_POOL);
 
   for (int i = 0; i < CNX_MANAGER_CONN_POOL; i++) {
-    ctx_t *cnx = (ctx_t *)malloc(sizeof(ctx_t));
-    if (cnx != NULL) {
-      memset(cnx, 0, sizeof(ctx_t));
-    }
+    cnx_t *cnx = (cxn_t *)calloc(1, sizeof(cxn_t));
     cm->cnx[i] = cnx;
   }
   cm->len = 0;
@@ -118,45 +115,43 @@ static void cm_add_cnx(cnx_manager_t *cm, int cfd) {
   // }
 }
 
-static void cm_track_cnx(cnx_manager_t *cm, int cfd) {
-  // check the cnx and it's status
-  cnx_manager_cnx_add(cm, cfd);
-}
+static void cm_remove_cnx(cnx_manager_t *cm, int cfd) {}
 
-// releases cnx
-void cnx_manager_cnx_remove(cnx_manager_t *cm, int cfd) {}
-// fetches cnx
-// cnx_ctx_t *cnx_manager_get(cnx_manager_t *cm, int cfd) {}
-//
+// move in buffer from ctx to cnx
+// use cnx directly instead of ctx
+// add stream len to cnx
+// has to go to the parser before it can go anyway not http
 
 void cm_manage_incoming_cnx(cnx_manager_t *cm, unsigned int cfd,
                         unsigned int epfd) {
 
-  ctx_t *ctx = cm->cnx[cfd];
-  ssize_t bytes_read = recv(cfd, ctx->buf, MAX_REQ_SIZE, 0);
+  cxn_t *cnx = cm->cnx[cfd];
+  cnx->fd = cfd;
+  ssize_t n = recv(cfd, cnx->buf, MAX_REQ_SIZE, 0);
+  cnx->raw_len = n;
 
-  // TODO: if 0 clean up allocated resources
   if (bytes_read == 0) {
-    // 0 EOF == tcp CLOSE_WAIT
     if (epoll_ctl(epfd, EPOLL_CTL_DEL, cfd, NULL) == -1) {
       perror("could not remove fd from interest list");
     }
+    // 0 EOF == tcp CLOSE_WAIT
+    // to free or not to free here cm->cnx[cfd];
     close(cfd);
   } else if (bytes_read == -1) {
+    // to free or not to free here cm->cnx[cfd];
+    // already closed continue
     return;
   } else {
     /*
-     * read get's you a byte steam
-     * make sense of byte steam tokenize handle error states early here
-     * validate the lexed content with parsing handle error states here
-     *
      * http validation (supporting small subset)
      * use the parsed input to build a context or return error
      * */
-    ctx->len = bytes_read;
     http_handle_raw_request_stream(ctx);
+    // needs to pass to paresr
+    // if subset of connman functions are needed as a full wrapper to context
+    // don't make a god module... 
+    // 
 
-    // partial write handling to be implemented
     size_t n = strlen((char *)ctx->http->response->buf);
     if (n > 0) {
       ssize_t bytes_written = write(cfd, ctx->http->response->buf, n);
