@@ -157,7 +157,6 @@ typedef struct server_state {
   cnx_manager_t *cm;
 } s_state_t;
 
-
 static void hangup(s_state_t* s) {
     close(s->server_md.fd);
     close(s->epoll_md.fd);
@@ -244,7 +243,6 @@ static void server_socket_listen(s_state_t *s) {
   }
   printf("Listening on %s:%s\n", s->network_md.log_str_ip, s->network_md.log_str_port);
 }
-
 
 static void server_epoll_create(s_state_t *s) {
   if ((s->epoll_md.fd = epoll_create1(0)) == -1) {
