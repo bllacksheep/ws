@@ -158,6 +158,13 @@ typedef struct server_state {
 } s_state_t;
 
 
+static void hangup(s_state_t* s) {
+    close(s->server_md.fd);
+    close(s->epoll_md.fd);
+    free(s->cm);
+    free(s);
+}
+
 // string used in log messages
 static void ipaddr_tostring(s_state_t *s) {
     char buf[20] = {0};
@@ -182,7 +189,7 @@ static void ipaddrstr_tonetip(s_state_t *s) {
     s->network_md.raw_net_ip = atoip(s->network_md.log_str_ip, strlen(s->network_md.log_str_ip));
 }
 
-void set_listen_addr_port(s_state_t *s, char* ip, char* port) {
+static void set_listen_addr_port(s_state_t *s, char* ip, char* port) {
     if (ip == NULL && port == NULL) {
         set_default_listen_addr_port(s);
     } else {
@@ -198,6 +205,65 @@ void set_listen_addr_port(s_state_t *s, char* ip, char* port) {
     s->server_md.server.sin_addr = s->network_md.server_sin_addr_ip;
 }
 
+static void server_socket_create(s_state_t *s) {
+  if ((s->server_md.fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1) {
+    fprintf(stderr, "could not create server socket %s\n", strerror(errno));
+    hangup(s);
+    exit(-1);
+  }
+
+  if (setnonblocking(s->server_md.fd) == -1) {
+    fprintf(stderr, "could not set server sock SOCK_NONBLOCK on fd: %d %s\n", s->server_md.fd,
+            strerror(errno));
+    hangup(s);
+    exit(-1);
+  }
+
+  int opt = 1;
+  if (setsockopt(s->server_md.fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
+    fprintf(stderr, "could not set server sock SOL_SOCKET SO_REUSEADDR %s\n", strerror(errno));
+    hangup(s);
+    exit(-1);
+  }
+}
+
+//TODO:
+// server size should be stored in server
+// log should be fetched via function
+static void server_socket_listen(s_state_t *s) {
+  if (bind(s->server_md.fd, (struct sockaddr *)&s->server_md.server, sizeof(s->server_md.server)) == -1) {
+    fprintf(stderr, "could not bind server sock %s\n", strerror(errno));
+    hangup(s);
+    exit(-1);
+  }
+
+  if (listen(s->server_md.fd, s->server_md.listen_backlog) == -1) {
+    fprintf(stderr, "could not listen server socket on %s:%s %s\n", s->network_md.log_str_ip, s->network_md.log_str_port, strerror(errno));
+    hangup(s);
+    exit(-1);
+  }
+  printf("Listening on %s:%s\n", s->network_md.log_str_ip, s->network_md.log_str_port);
+}
+
+
+static void server_epoll_create(s_state_t *s) {
+  if ((s->epoll_md.fd = epoll_create1(0)) == -1) {
+    fprintf(stderr, "could not create epoll instance %s\n",
+            strerror(errno));
+    hangup(s);
+    exit(-1);
+  }
+
+  s->server_md.events.events = EPOLLIN;
+  s->server_md.events.data.fd = s->server_md.fd;
+
+  if (epoll_ctl(s->epoll_md.fd, EPOLL_CTL_ADD, s->server_md.fd, &s->server_md.events) == -1) {
+    fprintf(stderr, "could not add sfd to epoll instance %s\n",
+            strerror(errno));
+    hangup(s);
+    exit(-1);
+  }
+}
 
 // init server, client, epoll here separately
 // initialize server state
@@ -230,75 +296,13 @@ s_state_t *server_state_initialization(char *ip, char *port) {
   // initialize local thread storage
   // probably not a good place to init this but needed for now
   tls_map_init();
+
+  server_socket_create(init_s_state);
+  server_socket_listen(init_s_state);
+  server_epoll_create(init_s_state);
   return init_s_state;
 }
 
-void static hangup(s_state_t* s) {
-    close(s->server_md.fd);
-    close(s->epoll_md.fd);
-    free(s->cm);
-    free(s);
-}
-
-void server_socket_create(s_state_t *s) {
-  if ((s->server_md.fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1) {
-    fprintf(stderr, "could not create server socket %s\n", strerror(errno));
-    hangup(s);
-    exit(-1);
-  }
-
-  if (setnonblocking(s->server_md.fd) == -1) {
-    fprintf(stderr, "could not set server sock SOCK_NONBLOCK on fd: %d %s\n", s->server_md.fd,
-            strerror(errno));
-    hangup(s);
-    exit(-1);
-  }
-
-  int opt = 1;
-  if (setsockopt(s->server_md.fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
-    fprintf(stderr, "could not set server sock SOL_SOCKET SO_REUSEADDR %s\n", strerror(errno));
-    hangup(s);
-    exit(-1);
-  }
-}
-
-//TODO:
-// server size should be stored in server
-// log should be fetched via function
-void server_socket_listen(s_state_t *s) {
-  if (bind(s->server_md.fd, (struct sockaddr *)&s->server_md.server, sizeof(s->server_md.server)) == -1) {
-    fprintf(stderr, "could not bind server sock %s\n", strerror(errno));
-    hangup(s);
-    exit(-1);
-  }
-
-  if (listen(s->server_md.fd, s->server_md.listen_backlog) == -1) {
-    fprintf(stderr, "could not listen server socket on %s:%s %s\n", s->network_md.log_str_ip, s->network_md.log_str_port, strerror(errno));
-    hangup(s);
-    exit(-1);
-  }
-  printf("Listening on %s:%s\n", s->network_md.log_str_ip, s->network_md.log_str_port);
-}
-
-
-void static server_epoll_create(s_state_t *s) {
-  if ((s->epoll_md.fd = epoll_create1(0)) == -1) {
-    fprintf(stderr, "could not create epoll instance %s\n",
-            strerror(errno));
-    hangup(s);
-    exit(-1);
-  }
-
-  s->server_md.events.events = EPOLLIN;
-  s->server_md.events.data.fd = s->server_md.fd;
-
-  if (epoll_ctl(s->epoll_md.fd, EPOLL_CTL_ADD, s->server_md.fd, &s->server_md.events) == -1) {
-    fprintf(stderr, "could not add sfd to epoll instance %s\n",
-            strerror(errno));
-    hangup(s);
-    exit(-1);
-  }
-}
 
 int main(int argc, char *argv[]) {
    char *ip = 0;
@@ -309,10 +313,6 @@ int main(int argc, char *argv[]) {
       ip = argv[1], port = argv[2];
     
    s_state_t *ss = server_state_initialization(ip, port);
-
-   server_socket_create(ss);
-   server_socket_listen(ss);
-   server_epoll_create(ss);
 
   for (;;) {
     if ((ss->epoll_md.n_ready_events = epoll_wait(ss->epoll_md.fd, ss->epoll_md.events, MAX_EVENTS, -1)) == -1) {
