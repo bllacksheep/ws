@@ -24,20 +24,15 @@ void handle_pending_cxn(cnx_manager_t *cm, unsigned int cfd,
                         unsigned int epfd) {
 
   ctx_t *ctx = cm->cnx[cfd];
-
   ssize_t bytes_read = recv(cfd, ctx->buf, MAX_REQ_SIZE, 0);
+
   // TODO: if 0 clean up allocated resources
   if (bytes_read == 0) {
     // 0 EOF == tcp CLOSE_WAIT
     if (epoll_ctl(epfd, EPOLL_CTL_DEL, cfd, NULL) == -1) {
-      fprintf(stderr, "error: remove fd from interest list: %d %s\n", cfd,
-              strerror(errno));
+      perror("could not remove fd from interest list");
     }
-    if (close(cfd) == -1) {
-      fprintf(stderr, "error: close on fd: %d %s\n", cfd, strerror(errno));
-      return;
-    }
-    return;
+    close(cfd);
   } else if (bytes_read == -1) {
     return;
   } else {
@@ -57,8 +52,7 @@ void handle_pending_cxn(cnx_manager_t *cm, unsigned int cfd,
     if (n > 0) {
       ssize_t bytes_written = write(cfd, ctx->http->response->buf, n);
       if (bytes_written == -1) {
-        fprintf(stderr, "error: write failed on fd: %d, %s\n", cfd,
-                strerror(errno));
+        perror("could not write on fd");
         return;
       }
       if (bytes_written != (ssize_t)n) {
@@ -76,8 +70,7 @@ int static setnonblocking(unsigned int fd) {
 
   if (!(flags & O_NONBLOCK)) {
     if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
-      fprintf(stderr, "error: fnctl setting O_NONBLOCK on fd %d %s\n", fd,
-              strerror(errno));
+      perror("could not set O_NONBLOCK on fd");
       return -1;
     }
   }
@@ -99,8 +92,7 @@ void tcp_drain_accept_backlog(int server_fd, int epoll_fd,
         break;
         // feels unnecessary
       } else {
-        fprintf(stderr, "error: client accept on: %d, %s\n", cfd,
-                strerror(errno));
+        perror("could not accept client connection");
         break;
       }
     }
@@ -110,8 +102,7 @@ void tcp_drain_accept_backlog(int server_fd, int epoll_fd,
 
     // TODO: add tracked connection object to epoll data
     if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, cfd, &client_event) == -1) {
-      fprintf(stderr, "error: epoll add cfd to instance list failed %s\n",
-              strerror(errno));
+      perror("could not add client fd to epoll instance list");
     }
   }
 }
@@ -208,14 +199,13 @@ static void set_listen_addr_port(s_state_t *s, char *ip, char *port) {
 
 static void server_socket_create(s_state_t *s) {
   if ((s->server_md.fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1) {
-    fprintf(stderr, "could not create server socket %s\n", strerror(errno));
+    perror("could not create server socket");
     hangup(s);
     exit(-1);
   }
 
   if (setnonblocking(s->server_md.fd) == -1) {
-    fprintf(stderr, "could not set server sock SOCK_NONBLOCK on fd: %d %s\n",
-            s->server_md.fd, strerror(errno));
+    perror("could not set server sock SOCK_NONBLOCK on fd");
     hangup(s);
     exit(-1);
   }
@@ -223,8 +213,7 @@ static void server_socket_create(s_state_t *s) {
   int opt = 1;
   if (setsockopt(s->server_md.fd, SOL_SOCKET, SO_REUSEADDR, &opt,
                  sizeof(opt)) == -1) {
-    fprintf(stderr, "could not set server sock SOL_SOCKET SO_REUSEADDR %s\n",
-            strerror(errno));
+    perror("could not set server sock SOL_SOCKET SO_REUSEADDR");
     hangup(s);
     exit(-1);
   }
@@ -236,15 +225,13 @@ static void server_socket_create(s_state_t *s) {
 static void server_socket_listen(s_state_t *s) {
   if (bind(s->server_md.fd, (struct sockaddr *)&s->server_md.server,
            sizeof(s->server_md.server)) == -1) {
-    fprintf(stderr, "could not bind server sock %s\n", strerror(errno));
+    perror("could not bind server sock");
     hangup(s);
     exit(-1);
   }
 
   if (listen(s->server_md.fd, s->server_md.listen_backlog) == -1) {
-    fprintf(stderr, "could not listen server socket on %s:%s %s\n",
-            s->network_md.log_str_ip, s->network_md.log_str_port,
-            strerror(errno));
+    perror("could not listen server socket");
     hangup(s);
     exit(-1);
   }
@@ -254,7 +241,7 @@ static void server_socket_listen(s_state_t *s) {
 
 static void server_epoll_create(s_state_t *s) {
   if ((s->epoll_md.fd = epoll_create1(0)) == -1) {
-    fprintf(stderr, "could not create epoll instance %s\n", strerror(errno));
+    perror("could not create epoll instance");
     hangup(s);
     exit(-1);
   }
@@ -264,8 +251,7 @@ static void server_epoll_create(s_state_t *s) {
 
   if (epoll_ctl(s->epoll_md.fd, EPOLL_CTL_ADD, s->server_md.fd,
                 &s->server_md.events) == -1) {
-    fprintf(stderr, "could not add sfd to epoll instance %s\n",
-            strerror(errno));
+    perror("could not add sfd to epoll instance");
     hangup(s);
     exit(-1);
   }
@@ -312,12 +298,16 @@ s_state_t *server_state_initialization(char *ip, char *port) {
 
 void server_state_start(char* ip, char* port) {
   s_state_t *s = server_state_initialization(ip, port);
+  if (s == NULL) {
+      fprintf(stderr, "could not create server state");
+      hangup(s);
+      exit(-1);
+  }
 
   for (;;) {
     if ((s->epoll_md.n_ready_events = epoll_wait(
              s->epoll_md.fd, s->epoll_md.events, MAX_EVENTS, -1)) == -1) {
-      fprintf(stderr, "could not wait for sfd on epoll intance%s\n",
-              strerror(errno));
+      perror("could not wait for server fd on epoll");
       // strace causes EINTR on epoll_wait
       if (errno == EINTR)
         continue;
@@ -342,11 +332,11 @@ void server_state_start(char* ip, char* port) {
 }
 
 void *validate_ip_addr(char *ip) {
-    return ip;
+    return ip; // or NULL
 }
 
 void *validate_port_addr(char *port) {
-    return port;
+    return port; // or NULL
 }
 
 int main(int argc, char *argv[]) {
@@ -358,6 +348,7 @@ int main(int argc, char *argv[]) {
     port = validate_port_addr(argv[2]);
   }
 
+  // could take config or options
   server_state_start(ip, port);
 
   return 0;
