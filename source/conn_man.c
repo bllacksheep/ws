@@ -5,8 +5,17 @@
 #include <string.h>
 #include <stdlib.h>
 
-typedef struct conn {
+enum state {
+  KEEPALIVE = 1,
+  CLOSE,
+};
 
+// not connected to protocol or http yet
+typedef struct conn {
+  unsigned int fd;
+  unsigned int len
+  char *buf;
+  enum state reuse;
 } cnx_t;
 
 typedef struct conn_man {
