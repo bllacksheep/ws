@@ -45,6 +45,8 @@ static void cm_add_cnx(cm_manage_t *cm) {
       exit(-1);
     }
   }
+
+  http_alloc_buf(cnx);
 }
 
 cnx_manager_t *cm_allocator() {
@@ -79,62 +81,6 @@ static void cm_track_cnx(cnx_manager_t *cm, int fd) {
   cm->cnx[fd]->state = PENDING;
   cm->len++;
 
-  cm->cnx[cfd]->http = (http_ctx_t *)malloc(sizeof(http_ctx_t));
-  if (cm->cnx[cfd]->http == NULL) {
-    // handle
-  }
-  cm->cnx[cfd]->http->request =
-      (http_request_t *)malloc(sizeof(http_request_t));
-  if (cm->cnx[cfd]->http->request == NULL) {
-    // handle
-  }
 
-  cm->cnx[cfd]->http->request->body =
-      (http_body_t *)malloc(sizeof(http_body_t));
-  if (cm->cnx[cfd]->http->request->body == NULL) {
-    // handle
-  }
-
-// play values to be adjusted
-#define BODY_BUF_SIZE 1024
-
-  cm->cnx[cfd]->http->request->body->buf =
-      (uint8_t *)malloc(sizeof(uint8_t) * BODY_BUF_SIZE);
-  if (cm->cnx[cfd]->http->request->body->buf == NULL) {
-    // handle
-  }
-
-  // cm->cnx[cfd]->http->request->path = NULL;
-  // cm->cnx[cfd]->http->request->version = NULL;
-  // cm->cnx[cfd]->http->request->headers = NULL;
-  // cm->cnx[cfd]->http->request->body->buf = NULL;
-  cm->cnx[cfd]->http->response =
-      (http_response_t *)malloc(sizeof(http_response_t));
-  if (cm->cnx[cfd]->http->response == NULL) {
-    // handle
-  }
-  /*
-   * responsed means it's done, but keep-alive by default
-   * close means it can be removed
-   * higher level http status means nothing unless close set
-   * so persistent cnxs can't be cleaned up if still 'managed'
-   * meaning realloc is likely unaviodable
-   * timeout will have to be set in order to balance performance
-   * add idle / stale to cnx_ctx_t
-   * i.e. persistent but inactive
-   * 30s inactive timeout
-   *
-   *
-   * allocating by cfd index is not efficent at scale.... fuck
-   *
-   */
-  // if (cm->len >= cm->cap / 2) {
-  //   cm->cap *= 2;
-  //   cm->cnx = (cnx_ctx_t **)realloc(cm->cnx, sizeof(cnx_ctx_t *) *
-  //   cm->cap);
-  // }
-
-  //   memset(cnx, 0, sizeof(cnx_ctx_t));
-  // }
 }
 

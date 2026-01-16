@@ -53,6 +53,51 @@ void http_handle_raw_request_stream(ctx_t *ctx) {
   ctx->http->response->buf = _200_ok;
 }
 
+void http_alloc_buf(cnx_t *cx) {
+  http_response_t *response_cont = {0};
+  http_request_t *request_cont = {0};
+  http_body_t *body_cont = {0};
+  http_ctx_t *http_cont = {0};
+  uint8_t *body_buf = {0};
+
+  http_cont = calloc(1, sizeof(http_ctx_t));
+  if (http == NULL) {
+      perror("could not alloc http");
+      exit(-1);
+  }
+
+  request = calloc(1, sizeof(http_request_t));
+  if (request == NULL) {
+      perror("could not alloc http request");
+      exit(-1);
+  }
+
+  body = calloc(1, sizeof(http_body_t));
+  if (body == NULL) {
+      perror("could not alloc http request body");
+      exit(-1);
+  }
+
+  body_buf = calloc(RESPONSE_BODY_BUF_SIZE, sizeof(uint8_t));
+  if (body_buf == NULL) {
+      perror("could not alloc http request body");
+      exit(-1);
+  }
+
+  response_cont = calloc(1, sizeof(http_response_t));
+  if (response == NULL) {
+      perror("could not alloc http response");
+      exit(-1);
+  }
+
+  http->response = response;
+  body->buf = body_buf;
+  request->body = body;
+  http->request = request;
+
+  cnx->http = http;
+}
+
 // http can see in internals need to remove
 void http_handle_incoming_cnx(cnx_t *cnx) {
   cnx->inbuf_n = recv(cfd, cnx->inbuf, MAX_REQ_SIZE, 0);
