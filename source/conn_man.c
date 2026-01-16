@@ -1,5 +1,6 @@
 #include "conn_man.h"
 #include "cnx_internal.h"
+#include "http.h"
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
@@ -21,7 +22,6 @@ static void cm_add_cnx(cnx_manager_t *cm) {
       perror("could not create connections");
       exit(-1);
   }
-
   for (int i = 0; i < CNX_MANAGER_CONN_POOL; i++) {
     cnx_t *cnx = (cnx_t *)calloc(1, sizeof(cnx_t));
     if (cnx == NULL) {
@@ -41,9 +41,8 @@ static void cm_add_cnx(cnx_manager_t *cm) {
       perror("could not create connection outbuf");
       exit(-1);
     }
+    http_alloc_buf(cnx);
   }
-
-  http_alloc_buf(cnx);
 }
 
 cnx_manager_t *cm_allocator() {

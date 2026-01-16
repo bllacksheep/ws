@@ -1,10 +1,37 @@
 #include "http.h"
-#include "conn_man.h"
 #include "cnx_internal.h"
 #include <parser.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+typedef enum methods {
+  UNKNOWN,
+  GET,
+  POST,
+} http_method_t;
+
+typedef struct httpBody {
+  uint8_t *buf;
+  const uint32_t length;
+} http_body_t;
+
+typedef struct httpRequest {
+  method_t method;
+  uint8_t *path;
+  uint8_t *version;
+  tm_item_t *headers[TABLE_SIZE];
+  http_body_t *body;
+} http_request_t;
+
+typedef struct httpResponse {
+  const uint8_t *buf;
+} http_response_t;
+
+typedef struct ctx {
+  http_request_t *request;
+  http_response_t *response;
+} http_ctx_t;
 
 const uint8_t *_405_method_not_allowed =
     "\n\nHTTP/1.1 405 Method Not Allowed\r\n"
