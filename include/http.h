@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <sys/types.h>
 
+#define HT_TABLE_SIZE 31
 #define MAX_REQ_SIZE 1024
 #define RESPONSE_BODY_BUF_SIZE 1024
 #define HTTP_ENDPOINT "/chat"

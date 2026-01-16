@@ -1,4 +1,5 @@
 #include "http.h"
+#include "hash.h"
 #include "cnx_internal.h"
 #include <parser.h>
 #include <stdio.h>
@@ -7,8 +8,8 @@
 
 static void http_handle_raw_request_stream(uint8_t *, uint32_t);
 
-typedef enum methods {
-  UNKNOWN,
+typedef enum httpMethods {
+  UNKNOWN = 0,
   GET,
   POST,
 } http_method_t;
@@ -19,10 +20,10 @@ typedef struct httpBody {
 } http_body_t;
 
 typedef struct httpRequest {
-  method_t method;
+  http_method_t method;
   uint8_t *path;
   uint8_t *version;
-  tm_item_t *headers[TABLE_SIZE];
+  tm_item_t *headers[HT_TABLE_SIZE];
   http_body_t *body;
 } http_request_t;
 
@@ -30,7 +31,7 @@ typedef struct httpResponse {
   const uint8_t *buf;
 } http_response_t;
 
-typedef struct ctx {
+typedef struct httpCtx {
   http_request_t *request;
   http_response_t *response;
 } http_ctx_t;

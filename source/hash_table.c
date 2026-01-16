@@ -1,4 +1,5 @@
-#include "hash_table.h"
+#include "hash_internal.h"
+#include "hash.h"
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>

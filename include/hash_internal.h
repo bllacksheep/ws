@@ -1,14 +1,13 @@
 #ifndef _HASH_H
 #define _HASH_H 1
 
+#include "hash.h"
 #include <stdint.h>
 #include <sys/types.h>
 
-#define TABLE_SIZE 31u
 #define HT_PRIME_1 31u
 #define HT_PRIME_2 37u
 
-typedef struct Item tm_item_t;
 typedef struct ThreadMap thread_map_t;
 
 thread_map_t* tls_map_get(void);
