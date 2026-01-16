@@ -2,6 +2,7 @@
 #define _HTTP_H 1
 
 #include "cnx.h"
+#include <stdint.h>
 #include <sys/types.h>
 
 #define MAX_REQ_SIZE 1024
