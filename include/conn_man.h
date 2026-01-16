@@ -8,8 +8,7 @@
 typedef struct conn cnx_t;
 typedef struct conn_man cnx_manager_t;
 
-cnx_manager_t *cm_create_cm(void);
+cnx_manager_t *cm_allocator(void);
 cnx_t *cm_get_cnx(cnx_manager_t *, int);
-void cm_manage_incnx(cnx_manager_t *, unsigned int, unsigned int);
 
 #endif

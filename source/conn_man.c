@@ -1,23 +1,9 @@
 #include "conn_man.h"
-#include "ctx.h"
+#include "cnx_internal.h"
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
-
-enum state {
-  KEEPALIVE = 1,
-  CLOSE,
-};
-
-// not connected to protocol or http yet
-typedef struct conn {
-  enum state reuse;
-  unsigned int fd;
-  ssize_t len
-  char *inbuf;
-  char *outbuf;
-} cnx_t;
 
 typedef struct conn_man {
   cnx_t **cnx;
@@ -30,7 +16,7 @@ static void cm_add_cnx(cnx_manager_t *, int);
 static void cm_track_cnx(cnx_manager_t *, int);
 static void cm_remove_cnx(cnx_manager_t *, int);
 
-cnx_manager_t *cm_create_cm() {
+cnx_manager_t *cm_allocator() {
   cnx_manager_t *cm = (cnx_manager_t *)malloc(sizeof(cnx_manager_t));
   if (cm == NULL) {
       perror("could not create connection manager");
@@ -126,55 +112,3 @@ static void cm_add_cnx(cnx_manager_t *cm, int cfd) {
 }
 
 static void cm_remove_cnx(cnx_manager_t *cm, int cfd) {}
-
-// move in buffer from ctx to cnx
-// use cnx directly instead of ctx
-// add stream len to cnx
-// has to go to the parser before it can go anyway not http
-
-void cm_manage_incoming_cnx(cnx_manager_t *cm, unsigned int cfd,
-                        unsigned int epfd) {
-
-  cxn_t *cnx = cm->cnx[cfd];
-  cnx->fd = cfd;
-  ssize_t n = recv(cfd, cnx->buf, MAX_REQ_SIZE, 0);
-  cnx->raw_len = n;
-
-  if (bytes_read == 0) {
-    if (epoll_ctl(epfd, EPOLL_CTL_DEL, cfd, NULL) == -1) {
-      perror("could not remove fd from interest list");
-    }
-    // 0 EOF == tcp CLOSE_WAIT
-    // to free or not to free here cm->cnx[cfd];
-    close(cfd);
-  } else if (bytes_read == -1) {
-    // to free or not to free here cm->cnx[cfd];
-    // already closed continue
-    return;
-  } else {
-    /*
-     * http validation (supporting small subset)
-     * use the parsed input to build a context or return error
-     * */
-    http_handle_raw_request_stream(ctx);
-    // needs to pass to paresr
-    // if subset of connman functions are needed as a full wrapper to context
-    // don't make a god module... 
-    // 
-
-    size_t n = strlen((char *)ctx->http->response->buf);
-    if (n > 0) {
-      ssize_t bytes_written = write(cfd, ctx->http->response->buf, n);
-      if (bytes_written == -1) {
-        perror("could not write on fd");
-        return;
-      }
-      if (bytes_written != (ssize_t)n) {
-        fprintf(stderr, "error: partial write on fd: %d, %s\n", cfd,
-                strerror(errno));
-        return;
-      }
-    }
-  }
-  return;
-}
