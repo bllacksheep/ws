@@ -1,5 +1,4 @@
 #include "parser.h"
-#include "ctx.h"
 #include "hash_table.h"
 #include <ctype.h>
 #include <stdint.h>
@@ -7,6 +6,56 @@
 #include <stdlib.h>
 #include <string.h>
 
+typedef enum {
+  CHAR,
+  NUM,
+  SPACE,
+  SLASH,
+  CARRIAGE,
+  NEWLINE,
+  SPECIAL,
+  DOT,
+  COLON,
+} stream_type_t;
+
+typedef enum {
+  METHOD,
+  PATH,
+  VERSION,
+  HEADERS,
+  BODY,
+  TOKEN_COUNT
+} semantic_type_t;
+
+typedef struct {
+  uint8_t val;
+  stream_type_t type;
+} stream_token_t;
+
+typedef struct {
+  uint8_t val[MAX_SEMANTIC_TOKEN_BUF_SIZE];
+  semantic_type_t type;
+} semantic_token_t;
+
+typedef struct {
+  uint8_t *headers;
+} headers_t;
+
+typedef struct {
+  uint8_t *data;
+} body_t;
+
+typedef struct {
+  uint8_t *method;
+  uint8_t *path;
+  uint8_t *version;
+  tm_item_t *items[TABLE_SIZE];
+  uint8_t *body;
+} raw_request_t;
+
+static void parser_parse_http_byte_stream(stream_token_t *, const uint8_t *,
+                                          size_t);
+static void parser_parse_http_req_semantics(http_ctx_t *, stream_token_t *, size_t);
 static void parser_parse_http_byte_stream(stream_token_t *stream,
                                           const uint8_t *input, size_t slen) {
 
