@@ -6,7 +6,8 @@
 #define CNX_MANAGER_BYTE_STREAM_SIZEIN 1024
 #define CNX_MANAGER_BYTE_STREAM_SIZEOUT 1024
 
-typedef struct conn cnx_t;
+#include "cnx.h"
+
 typedef struct conn_man cnx_manager_t;
 
 cnx_manager_t *cm_allocator(void);
