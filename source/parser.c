@@ -1,7 +1,7 @@
 #include "parser.h"
 #include "hash.h"
-#include "hash_internal.h"
 #include "http.h"
+#include "hash_internal.h"
 #include "http_internal.h"
 #include <ctype.h>
 #include <stdint.h>
@@ -58,9 +58,9 @@ typedef struct {
 
 static void parser_parse_http_byte_stream(stream_token_t *, const uint8_t *,
                                           size_t);
-static void parser_parse_http_req_semantics(http_ctx_t *, stream_token_t *,
+static void parser_parse_http_semantics(http_ctx_t *, stream_token_t *,
                                             size_t);
-static void parser_parse_http_byte_stream(stream_token_t *stream,
+static void parser_parse_raw_byte_stream(stream_token_t *stream,
                                           const uint8_t *input, size_t slen) {
 
   if (slen > MAX_INCOMING_STREAM_SIZE) {
@@ -280,15 +280,20 @@ static void parser_parse_http_req_semantics(http_ctx_t *ctx,
 }
 
 void parser_parse_http_request(http_ctx_t *ctx, const uint8_t *stream_in,
-                               size_t stream_n) {
+                               size_t token_n) {
   // don't allocate here
-  stream_token_t *token_stream =
-      (stream_token_t *)malloc(sizeof(stream_token_t) * token_count);
+  // max req size is known...
+  // can't take size of incomplete type
+  //
+  size_t token_count = sizeof(stream_token_t) * token_n;
+  stream_token_t *token_stream = calloc(token_count, sizeof(stream_token_t));
+
   if (token_stream == NULL) {
-    fprintf(stderr, "never cross the streams!\n");
+    perror("never cross the streams!");
     exit(-1);
   }
-  parser_parse_http_byte_stream(token_stream, byte_stream, token_count);
-  parser_parse_http_req_semantics(ctx, token_stream, token_count);
+
+  parser_parse_raw_byte_stream(token_stream, stream_in, token_count);
+  parser_parse_http_semantics(ctx, token_stream, token_count);
   return;
 }

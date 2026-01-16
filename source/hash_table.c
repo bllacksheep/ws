@@ -13,7 +13,7 @@ typedef struct Item {
 } tm_item_t;
 
 typedef struct ThreadMap {
-  tm_item_t *items[TABLE_SIZE];
+  tm_item_t *items[HT_TABLE_SIZE];
   size_t count;
   uint64_t epoch;
 } thread_map_t;
@@ -41,7 +41,7 @@ void tls_map_init(void) {
   if (tls_inited) return;
 
   tls_map.epoch = 1;
-  for (int i = 0; i < TABLE_SIZE; i++) {
+  for (int i = 0; i < HT_TABLE_SIZE; i++) {
     tm_item_t *item = calloc(1, sizeof(*item));
     if (item == NULL) {
         fprintf(stderr, "could not initialize tls_map\n");
@@ -113,7 +113,7 @@ static inline uint32_t ht_get_hash(const uint8_t *item_key, const size_t item_ke
   const uint32_t hash_a = ht_hash2(item_key, item_key_len, HT_PRIME_1);
   const uint32_t hash_b = ht_hash2(item_key, item_key_len, HT_PRIME_2);
   // should these types align in shape?
-  return (hash_a + (attempt * (hash_b + 1))) % TABLE_SIZE;
+  return (hash_a + (attempt * (hash_b + 1))) % HT_TABLE_SIZE;
 }
 /*
 int main() {

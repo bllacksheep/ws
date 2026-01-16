@@ -1,6 +1,6 @@
 #include "init.h"
 #include "cnx_man.h"
-#include "hash_table.h"
+#include "hash.h"
 #include "ip.h"
 #include <arpa/inet.h>
 #include <asm-generic/errno.h>

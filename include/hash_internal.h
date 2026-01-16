@@ -1,5 +1,5 @@
-#ifndef _HASH_H
-#define _HASH_H 1
+#ifndef _HASH_INTERNAL_H
+#define _HASH_INTERNAL_H 1
 
 #include "hash.h"
 #include <stdint.h>

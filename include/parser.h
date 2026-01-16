@@ -1,5 +1,6 @@
 #ifndef _PARSER_H
 #define _PARSER_H 1
+#include "http.h"
 #include<stdint.h>
 
 #define MAX_HEADER_BUF_SIZE 256

@@ -1,3 +1,5 @@
+#ifndef HTTP_INTERNAL_H
+#define HTTP_INTERNAL_H 1
 #include <hash.h>
 #include <stdint.h>
 
@@ -24,3 +26,4 @@ typedef struct httpCtx {
   http_request_t *request;
   http_response_t *response;
 } http_ctx_t;
+#endif
