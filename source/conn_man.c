@@ -12,10 +12,11 @@ enum state {
 
 // not connected to protocol or http yet
 typedef struct conn {
-  unsigned int fd;
-  unsigned int len
-  char *buf;
   enum state reuse;
+  unsigned int fd;
+  ssize_t len
+  char *inbuf;
+  char *outbuf;
 } cnx_t;
 
 typedef struct conn_man {
