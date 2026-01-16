@@ -3,7 +3,7 @@ CFLAGS = -Iinclude -g
 LDFLAGS = -lcriterion
 
 SRC = source
-OBJ = build/server.o build/conn_man.o build/http.o build/ip.o build/parser.o build/hash_table.o build/init.o
+OBJ = build/server.o build/cnx_man.o build/http.o build/ip.o build/parser.o build/hash_table.o build/init.o
 
 all: server_db test
 
