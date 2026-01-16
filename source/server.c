@@ -1,7 +1,6 @@
 #include "server.h"
 #include "init.h"
 
-
 int main(int argc, char *argv[]) {
   char *ip = 0;
   char *port = 0;
