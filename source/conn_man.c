@@ -13,12 +13,9 @@ typedef struct conn_man {
   size_t allocated;
 } cnx_manager_t;
 
-static void cm_add_cnx(cnx_manager_t *, int);
-static void cm_track_cnx(cnx_manager_t *, int);
-static void cm_remove_cnx(cnx_manager_t *, int);
+static void cm_add_cnx(cnx_manager_t *);
 
-
-static void cm_add_cnx(cm_manage_t *cm) {
+static void cm_add_cnx(cnx_manager_t *cm) {
   cm->cnx = (cnx_t **)calloc(CNX_MANAGER_CONN_POOL, sizeof(cnx_t *));
   if (cm->cnx == NULL) {
       perror("could not create connections");
@@ -61,11 +58,11 @@ cnx_manager_t *cm_allocator() {
   return cm;
 }
 
-static void cm_remove_cnx(cnx_t *cnx) {
+void cm_remove_cnx(cnx_t *cnx) {
     cnx->state = CLOSED;
 }
 
-static void cm_track_cnx(cnx_manager_t *cm, int fd) {
+void cm_track_cnx(cnx_manager_t *cm, int fd) {
   if (cm == NULL) {
       fprintf(stderr, "no connection manager");
       exit(-1);

@@ -8,10 +8,10 @@ enum conn_reuse {
 };
 
 enum conn_state {
-    UNUSED = 0
+    UNUSED = 0,
     CLOSED,
     PENDING,
-}
+};
 
 // not connected to protocol or http yet
 typedef struct conn {
