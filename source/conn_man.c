@@ -31,14 +31,14 @@ static void cm_add_cnx(cnx_manager_t *cm) {
     cm->cnx[i] = cnx;
     cm->cnx[i]->reuse = KEEPALIVE;
     cm->cnx[i]->state = UNUSED;
-    cm->cnx[i]->inbuf = (uint8_t *)calloc(CNX_MANAGER_BYTE_STREAM_SIZEIN, sizeof(uint8_t));
-    if (cm->cnx[i]->inbuf == NULL) {
-      perror("could not create connection inbuf");
+    cm->cnx[i]->stream_out_b = (uint8_t *)calloc(CNX_MANAGER_BYTE_STREAM_SIZEIN, sizeof(uint8_t));
+    if (cm->cnx[i]->stream_in_b == NULL) {
+      perror("could not create connection stream inbuf");
       exit(-1);
     }
-    cm->cnx[i]->outbuf = (uint8_t *)calloc(CNX_MANAGER_BYTE_STREAM_SIZEOUT, sizeof(uint8_t));
-    if (cm->cnx[i]->outbuf == NULL) {
-      perror("could not create connection outbuf");
+    cm->cnx[i]->stream_out_b = (uint8_t *)calloc(CNX_MANAGER_BYTE_STREAM_SIZEOUT, sizeof(uint8_t));
+    if (cm->cnx[i]->stream_out_b == NULL) {
+      perror("could not create connection stream outbuf");
       exit(-1);
     }
     http_alloc_buf(cnx);

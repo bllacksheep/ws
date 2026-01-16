@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+static void http_handle_raw_request_stream(uint8_t *, uint32_t);
+
 typedef enum methods {
   UNKNOWN,
   GET,
@@ -52,15 +54,9 @@ const uint8_t *_200_ok = "HTTP/1.1 200 OK\r\n"
                          "Content-Type: text/plain\r\n"
                          "Connection: keep-alive\r\n\r\n";
 
-void http_parse_request(http_ctx_t *ctx, const uint8_t *stream) {
-  parser_parse_http_request(ctx, stream);
-}
 
-void http_handle_raw_request_stream(ctx_t *ctx) {
-  if (ctx->buf == NULL || (int)ctx->len >= MAX_REQ_SIZE) {
-    exit(1);
-  }
-  http_parse_request(ctx->http, ctx->buf);
+static void http_handle_raw_request_stream(uint8_t *stream_in, uint32_t stream_in_n) {
+  parser_parse_http_request(ctx, stream);
 
   if (ctx->http->request->method == UNKNOWN) {
     fprintf(stderr, "error: initialize request line unknown payload\n");
@@ -77,6 +73,7 @@ void http_handle_raw_request_stream(ctx_t *ctx) {
     ctx->http->response->buf = _405_method_not_allowed;
   }
 
+  cnx->outbuf_n = strlen(cnx->outbuf);
   ctx->http->response->buf = _200_ok;
 }
 
@@ -127,36 +124,39 @@ void http_alloc_buf(cnx_t *cx) {
 
 // http can see in internals need to remove
 void http_handle_incoming_cnx(cnx_t *cnx) {
-  cnx->inbuf_n = recv(cfd, cnx->inbuf, MAX_REQ_SIZE, 0);
+  cnx->stream_in_b_n = recv(cfd, cnx->inbuf, MAX_REQ_SIZE, 0);
 
-  if (cnx->inbuf_n == 0) {
-    if (epoll_ctl(cnx->event_loop_fd, EPOLL_CTL_DEL, cnx->fd, NULL) == -1) {
-      perror("could not remove fd from interest list");
-    }
-    // 0 EOF == tcp CLOSE_WAIT
-    // to free or not to free here cm->cnx[cfd];
-    close(cnx->fd);
-  } else if (cnx->inbuf_n == -1) {
+  switch (cnx->stream_in_b_n) {
+      case 0:
+        if (epoll_ctl(cnx->event_loop_fd, EPOLL_CTL_DEL, cnx->fd, NULL) == -1) {
+            perror("could not remove fd from interest list");
+         }
+        // 0 EOF == tcp CLOSE_WAIT
+        // to free or not to free here cm->cnx[cfd];
+        close(cnx->fd);
+        break;
+      case -1:
     // to free or not to free here cm->cnx[cfd];
     // already closed continue
-    return;
-  } else {
-    http_handle_raw_request_stream(cnx);
-    // can be moved internally
-    cnx->outbuf_n = strlen(cnx->outbuf);
+       return;
+            break;
+      default:
+
+    http_handle_raw_request_stream(cnx->inbuf, cnx->inbuf_n);
 
     if (cnx->outbuf > 0) {
-      cnx->resp_written_n += write(cnx->fd, cnx->outbuf, cnx->outbuf_n);
-      if (cnx->resp_written_n == -1) {
+      cnx->stream_out_b_written_n += write(cnx->fd, cnx->stream_out_b, cnx->stream_out_b_n);
+      if (cnx->stream_out_b_written_n == -1) {
         perror("could not write on fd");
         return;
       }
-      if (cnx->resp_written_n != (ssize_t)cnx->outbuf_n) {
+      if (cnx->stream_out_b_written_n != (ssize_t)cnx->stream_out_b_n) {
         fprintf(stderr, "error: partial write on fd: %d, %s\n", cnx->fd,
                 strerror(errno));
         return;
       }
     }
+    break;
   }
   return;
 }

@@ -17,9 +17,5 @@ typedef struct httpResponse http_response_t;
 typedef struct httpCtx http_ctx_t;
 
 void http_alloc_buf(cnx_t *);
-void http_handle_raw_request_stream(ctx_t *);
-void http_parse_request(http_ctx_t *, const uint8_t *);
-
-
-
+void http_parse_request(const uint8_t *, uint32_t);
 #endif

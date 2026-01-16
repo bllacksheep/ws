@@ -18,12 +18,11 @@ typedef struct conn {
   enum conn_reuse reuse;
   enum conn_state state;
   unsigned int fd;
-  unsigned int event_loop_fd;
-  ssize_t inbuf_n;
-  ssize_t outbuf_n;
-  ssize_t resp_written_n;
-  char *inbuf;
-  char *outbuf;
+  unsigned int ev_loop_fd;
+  ssize_t stream_out_b_n;
+  ssize_t stream_out_b_written_n;
+  char *stream_in_b;
+  char *stream_out_b;
 } cnx_t;
 
 #endif
