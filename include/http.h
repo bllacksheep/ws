@@ -22,6 +22,7 @@ typedef enum httpMethods {
 } http_method_t;
 
 void http_alloc_buf(cnx_t *);
-void http_parse_request(http_ctx_t *, const uint8_t *, uint32_t,
-                                      const uint8_t *, uint32_t);
+// void http_parse_request(http_ctx_t *, const uint8_t *, uint32_t,
+//                                       const uint8_t *, uint32_t);
+void http_handle_incoming_cnx(cnx_t *);
 #endif
