@@ -1,5 +1,5 @@
 #include "init.h"
-#include "conn_man.h"
+#include "cnx_man.h"
 #include "hash_table.h"
 #include "ip.h"
 #include <arpa/inet.h>

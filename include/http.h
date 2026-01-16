@@ -11,7 +11,6 @@
 #define RESPONSE_BODY_BUF_SIZE 1024
 #define HTTP_ENDPOINT "/chat"
 
-extern typedef struct conn cnx_t;
 typedef enum httpMethods http_method_t;
 typedef struct httpBody http_body_t;
 typedef struct httpRequest http_request_t;
