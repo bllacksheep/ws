@@ -1,12 +1,6 @@
 #include <hash.h>
 #include <stdint.h>
 
-typedef enum httpMethods {
-  UNKNOWN = 0,
-  GET,
-  POST,
-} http_method_t;
-
 typedef struct httpBody {
   uint8_t *buf;
   const uint32_t length;

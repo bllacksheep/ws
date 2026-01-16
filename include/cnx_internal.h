@@ -19,9 +19,9 @@ typedef struct conn {
   enum conn_state state;
   unsigned int fd;
   unsigned int ev_loop_fd;
-  ssize_t stream_inbuf_n;
-  ssize_t stream_outbuf_n;
-  ssize_t stream_outbuf_written_n;
+  size_t stream_inbuf_n;
+  size_t stream_outbuf_n;
+  size_t stream_outbuf_written_n;
   uint8_t *stream_inbuf;
   uint8_t *stream_outbuf;
   http_ctx_t *http;

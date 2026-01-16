@@ -6,8 +6,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <sys/epoll.h>
 
 static void http_handle_raw_request_stream(http_ctx_t *, const uint8_t *,
+                                           uint32_t,
+                                           const uint8_t *,
                                            uint32_t);
 
 const uint8_t *_405_method_not_allowed =
@@ -30,28 +35,36 @@ const uint8_t *_200_ok = "HTTP/1.1 200 OK\r\n"
                          "Connection: keep-alive\r\n\r\n";
 
 static void http_handle_raw_request_stream(http_ctx_t *ctx,
-                                           const uint8_t *stream_in,
-                                           uint32_t stream_n) {
-  parser_parse_http_request(ctx, stream_in, stream_n);
+                                           const uint8_t *stream_inbuf,
+                                           uint32_t stream_inbuf_n,
+                                           const uint8_t *stream_outbuf,
+                                           uint32_t stream_outbuf_n) {
+
+  parser_parse_http_request(ctx, stream_inbuf, stream_inbuf_n);
 
   // needs functions for validitity here
+  // switch statement here
+  // needs response + headers + body
   if (ctx->request->method == UNKNOWN) {
     fprintf(stderr, "error: initialize request line unknown payload\n");
-    ctx->response->buf = _400_bad_request;
+    stream_outbuf_n = strlen(stream_outbuf);
+    stream_outbuf = _400_bad_request;
   }
 
   if (strcmp((char *)ctx->request->path, HTTP_ENDPOINT) != 0) {
     fprintf(stderr, "error: initialize request line uri expectet /chat\n");
-    ctx->response->buf = _400_bad_request;
+    stream_outbuf_n = strlen(stream_outbuf);
+    stream_outbuf = _400_bad_request;
   }
 
   if (ctx->request->method != GET) {
     fprintf(stderr, "error: initialize request line not GET method\n");
-    ctx->response->buf = _405_method_not_allowed;
+    stream_outbuf_n = strlen(stream_outbuf);
+    stream_outbuf = _405_method_not_allowed;
   }
 
-  cnx->stream_outbuf_n = strlen(cnx->stream_outbuf);
-  cnx->stream_outbuf = _200_ok;
+  stream_outbuf_n = strlen(stream_outbuf);
+  stream_outbuf = _200_ok;
 }
 
 void http_alloc_buf(cnx_t *cx) {
@@ -99,28 +112,31 @@ void http_alloc_buf(cnx_t *cx) {
   cx->http = http_cont;
 }
 
-// http can see in internals need to remove
 void http_handle_incoming_cnx(cnx_t *cx) {
-  cx->stream_inbuf_n = recv(cx->fd, cx->stream_inbuf, MAX_REQ_SIZE, 0);
 
-  switch (cx->stream_inbuf_n) {
-  case 0:
+  // check here if cx is existing conn or new cx
+  ssize_t stream_n = recv(cx->fd, cx->stream_inbuf, MAX_REQ_SIZE, 0);
+
+  if (stream_n < 0)
+    return;
+
+  cx->stream_inbuf_n = stream_n;
+
+  if (cx->stream_inbuf_n == 0) {
+
     if (epoll_ctl(cx->ev_loop_fd, EPOLL_CTL_DEL, cx->fd, NULL) == -1) {
       perror("could not remove fd from interest list");
     }
+
     // 0 EOF == tcp CLOSE_WAIT
     // to free or not to free here cm->cnx[cfd];
     close(cx->fd);
-    break;
-  case -1:
-    // to free or not to free here cm->cnx[cfd];
-    // already closed continue
-    return;
-    break;
-  default:
 
+   } else {
     http_handle_raw_request_stream(cx->http, cx->stream_inbuf,
-                                   cx->stream_inbuf_n);
+                                   cx->stream_inbuf_n,
+                                   cx->stream_outbuf,
+                                   cx->stream_outbuf_n);
 
     if (cx->stream_outbuf_n > 0) {
       cx->stream_outbuf_written_n +=
@@ -133,9 +149,8 @@ void http_handle_incoming_cnx(cnx_t *cx) {
         fprintf(stderr, "error: partial write on fd: %d, %s\n", cx->fd,
                 strerror(errno));
         return;
+        }
       }
     }
-    break;
-  }
   return;
 }
