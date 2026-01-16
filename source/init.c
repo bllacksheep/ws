@@ -111,7 +111,7 @@ static void server_tcp_drain_accept_backlog(int server_fd, int epoll_fd,
         break;
       }
     }
-    cnx_manager_cnx_track(cm, cfd);
+    cm_track_cnx(cm, cfd);
     client_event.events = EPOLLIN | EPOLLRDHUP | EPOLLET;
     client_event.data.fd = cfd;
 
@@ -156,7 +156,7 @@ static void server_start_listen_addr_port(s_state_t *s, char *ip, char *port) {
     s->network_md.log_str_ip = ip;
     s->network_md.log_str_port = port;
 
-    ipaddrstr_tonetip(s);
+    server_ipaddrstr_tonetip(s);
     unsigned short port_atoi = atoi(port);
     s->network_md.server_sin_port = htons(port_atoi);
     s->network_md.server_sin_addr_ip.s_addr = htonl(s->network_md.raw_net_ip);
@@ -170,7 +170,7 @@ static void server_start_listen_addr_port(s_state_t *s, char *ip, char *port) {
 static void server_socket_create(s_state_t *s) {
   if ((s->server_md.fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1) {
     perror("could not create server socket");
-    hangup(s);
+    server_hangup(s);
     exit(-1);
   }
 
@@ -223,7 +223,7 @@ static void server_epoll_create(s_state_t *s) {
   if (epoll_ctl(s->epoll_md.fd, EPOLL_CTL_ADD, s->server_md.fd,
                 &s->server_md.events) == -1) {
     perror("could not add sfd to epoll instance");
-    hangup(s);
+    server_hangup(s);
     exit(-1);
   }
 }
