@@ -1,5 +1,6 @@
 #include "http.h"
-#include "ctx.h"
+#include "conn_man.h"
+#include "cnx_internal.h"
 #include <parser.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -50,4 +51,40 @@ void http_handle_raw_request_stream(ctx_t *ctx) {
   }
 
   ctx->http->response->buf = _200_ok;
+}
+
+// http can see in internals need to remove
+void http_handle_incoming_cnx(cnx_t *cnx) {
+  cnx->inbuf_n = recv(cfd, cnx->inbuf, MAX_REQ_SIZE, 0);
+
+  if (cnx->inbuf_n == 0) {
+    if (epoll_ctl(cnx->event_loop_fd, EPOLL_CTL_DEL, cnx->fd, NULL) == -1) {
+      perror("could not remove fd from interest list");
+    }
+    // 0 EOF == tcp CLOSE_WAIT
+    // to free or not to free here cm->cnx[cfd];
+    close(cnx->fd);
+  } else if (cnx->inbuf_n == -1) {
+    // to free or not to free here cm->cnx[cfd];
+    // already closed continue
+    return;
+  } else {
+    http_handle_raw_request_stream(cnx);
+    // can be moved internally
+    cnx->outbuf_n = strlen(cnx->outbuf);
+
+    if (cnx->outbuf > 0) {
+      cnx->resp_written_n += write(cnx->fd, cnx->outbuf, cnx->outbuf_n);
+      if (cnx->resp_written_n == -1) {
+        perror("could not write on fd");
+        return;
+      }
+      if (cnx->resp_written_n != (ssize_t)cnx->outbuf_n) {
+        fprintf(stderr, "error: partial write on fd: %d, %s\n", cnx->fd,
+                strerror(errno));
+        return;
+      }
+    }
+  }
+  return;
 }
