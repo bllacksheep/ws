@@ -1,13 +1,9 @@
 #ifndef _HTTP_H
 #define _HTTP_H 1
 
-#include "parser.h"
 #include "cnx.h"
-#include <stdint.h>
-#include <stdint.h>
 #include <sys/types.h>
 
-#define HT_TABLE_SIZE 31
 #define MAX_REQ_SIZE 1024
 #define RESPONSE_BODY_BUF_SIZE 1024
 #define HTTP_ENDPOINT "/chat"
@@ -19,5 +15,5 @@ typedef struct httpResponse http_response_t;
 typedef struct httpCtx http_ctx_t;
 
 void http_alloc_buf(cnx_t *);
-void http_parse_request(const uint8_t *, uint32_t);
+void http_parse_request(http_ctx_t *, const uint8_t *, uint32_t);
 #endif
