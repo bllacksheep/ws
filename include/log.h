@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 #if LOG_ENABLED
+  #warning "LOGGING ENABLED"
   static void logger(const char* file, int line, const char *fn, const char *fmt, ...);
 
   static void logger(const char* file, int line, const char *fn, const char *fmt, ...) {
