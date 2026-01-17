@@ -70,6 +70,7 @@ typedef struct server_state {
   cnx_manager_t *cm;
 } s_state_t;
 
+// needs to free more
 static void server_hangup(s_state_t *s) {
   close(s->server_md.fd);
   close(s->epoll_md.fd);
@@ -273,12 +274,11 @@ void server_event_loop(s_state_t *s) {
     }
     for (int n = 0; n < s->epoll_md.n_ready_events; n++) {
       if (s->epoll_md.events[n].events & EPOLLRDHUP) {
-        cnx = s->epoll_md.events[n].data.ptr;
-        close(cm_get_cnx_fd(cnx));
+        close(s->epoll_md.events[n].data.fd);
         continue;
       }
-      cnx = s->epoll_md.events[n].data.ptr;
-      if (cm_get_cnx_fd(cnx) == s->server_md.fd) {
+      unsigned int fd = s->epoll_md.events[n].data.fd;
+      if (fd == s->server_md.fd) {
         server_tcp_drain_accept_backlog(s);
       } else {
         cnx = s->epoll_md.events[n].data.ptr;
