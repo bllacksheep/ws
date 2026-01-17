@@ -3,7 +3,9 @@
 #include "http.h"
 #include<stdint.h>
 
-#define MAX_HEADER_BUF_SIZE 256
+// max size of a header k,v
+#define MAX_HEADER_KEY_BUF_SIZE 256
+#define MAX_HEADER_VAL_BUF_SIZE 256
 #define MAX_SEMANTIC_TOKEN_BUF_SIZE 256
 #define MAX_INCOMING_STREAM_SIZE 512
 

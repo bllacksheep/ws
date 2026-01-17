@@ -143,9 +143,6 @@ static void parser_parse_http_semantics(http_ctx_t *ctx, stream_token_t *stream_
     ERROR_STATE,
   } state = IDLE;
 
-  // enum needed to set array size
-  enum { MAX_HEADER_BUF = MAX_HEADER_BUF_SIZE };
-
   // don't allocate here
   int32_t sem_token_idx = 0;
 
@@ -220,38 +217,39 @@ static void parser_parse_http_semantics(http_ctx_t *ctx, stream_token_t *stream_
                  stream_tokens[i + 2].type == CARRIAGE &&
                  stream_tokens[i + 3].type == NEWLINE) {
 
-        uint8_t key[MAX_HEADER_BUF] = {0};
-        uint8_t val[MAX_HEADER_BUF] = {0};
-        uint8_t *headers = semantic_tokens[HEADERS].val;
-        int32_t j = 0; // overall pos in headers
-        int32_t k = 0;
-        int32_t v = 0;
+        uint8_t *header_stream = semantic_tokens[HEADERS].val;
+        size_t h_pos = 0; // overall pointer pos in header stream
 
         // assumes the correct data is sent
-        while (headers[j] != '\0') {
-          while (headers[j] != ':') {
-            if (k <= MAX_HEADER_BUF)
-              key[k++] = headers[j++];
+        while (header_stream[h_pos] != '\0') {
+            uint8_t tmp_key[MAX_HEADER_KEY_BUF_SIZE] = {0};
+            uint8_t tmp_val[MAX_HEADER_VAL_BUF_SIZE] = {0};
+            size_t k_pos = 0; // pos in header key
+            size_t v_pos = 0; // pos in header val
+          while (header_stream[h_pos] != ':') {
+            if (k_pos <= MAX_HEADER_KEY_BUF_SIZE)
+              tmp_key[k_pos++] = header_stream[h_pos++];
           }
           // skip :<sp>
-          if (headers[j] == ':') {
-            j += 2;
+          if (header_stream[h_pos] == ':') {
+            h_pos += 2;
           }
-          while (headers[j] != ' ' && headers[j] != '\0') {
-            if (k <= MAX_HEADER_BUF)
-              val[v++] = headers[j++];
+          while (header_stream[h_pos] != ' ' && header_stream[h_pos] != '\0') {
+            if (v_pos <= MAX_HEADER_VAL_BUF_SIZE)
+              tmp_val[v_pos++] = header_stream[h_pos++];
           }
           // skip <sp>
-          if (headers[j] == ' ') {
-            j++;
+          if (header_stream[h_pos] == ' ') {
+            h_pos++;
           }
 
-          tls_map_insert(key, strlen(key), val);
+          // not allocated yet
+          tls_map_insert(tmp_key, strlen(tmp_key), tmp_val);
 
           // don't memset here
-          memset(key, 0, MAX_HEADER_BUF);
-          memset(val, 0, MAX_HEADER_BUF);
-          v = k = 0;
+          //memset(key, 0, MAX_HEADER_BUF);
+          //memset(val, 0, MAX_HEADER_BUF);
+          //v = k = 0;
         }
         // ht_del_hash_table(ht);
         // ctx->request->headers = validate_headers(ht);
