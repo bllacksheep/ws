@@ -1,7 +1,6 @@
 #include "parser.h"
 #include "hash.h"
 #include "http.h"
-#include "hash_internal.h"
 #include "http_internal.h"
 #include <ctype.h>
 #include <stdint.h>
@@ -58,10 +57,10 @@ typedef struct {
 
 static void parser_parse_http_byte_stream(stream_token_t *, const uint8_t *,
                                           size_t);
-static void parser_parse_http_semantics(http_ctx_t *, stream_token_t *,
-                                            size_t);
+static void parser_parse_http_semantics(http_ctx_t *, stream_token_t *, size_t);
+
 static void parser_parse_raw_byte_stream(stream_token_t *stream,
-                                          const uint8_t *input, size_t slen) {
+                                         const uint8_t *input, size_t slen) {
 
   if (slen > MAX_INCOMING_STREAM_SIZE) {
     printf("stream too large!\n");
@@ -129,9 +128,8 @@ static void validate_method(http_ctx_t *cx, uint8_t *m) {
   }
 }
 
-static void parser_parse_http_req_semantics(http_ctx_t *ctx,
-                                            stream_token_t *stream,
-                                            size_t token_count) {
+static void parser_parse_http_semantics(http_ctx_t *ctx, stream_token_t *stream,
+                                        size_t token_count) {
 
   enum {
     IDLE,
