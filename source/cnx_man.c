@@ -77,3 +77,5 @@ void cm_track_cnx(cnx_manager_t *cm, int fd) {
   cm->cnx[fd]->state = PENDING;
   cm->len++;
 }
+
+int cm_get_cnx_fd(cnx_t *cx) { return cx->fd; }

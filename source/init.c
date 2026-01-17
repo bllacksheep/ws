@@ -1,6 +1,7 @@
 #include "init.h"
 #include "cnx_man.h"
 #include "hash.h"
+#include "http.h"
 #include "ip.h"
 #include <arpa/inet.h>
 #include <asm-generic/errno.h>
@@ -16,7 +17,6 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-
 typedef struct server_state s_state_t;
 
 static void server_epoll_create(s_state_t *);
@@ -29,10 +29,7 @@ static void server_ipaddr_tostring(s_state_t *);
 static void server_portnum_tostring(s_state_t *);
 static void server_hangup(s_state_t *);
 static int server_setsock_nonblocking(unsigned int);
-static void server_tcp_drain_accept_backlog(int, int,
-                              struct epoll_event,
-                              cnx_manager_t *, struct sockaddr_in,
-                              socklen_t *);
+static void server_tcp_drain_accept_backlog(s_state_t *);
 
 struct epoll_metadata {
   struct epoll_event events[MAX_EVENTS];
@@ -92,16 +89,13 @@ static int server_setsock_nonblocking(unsigned int fd) {
   return 0;
 }
 
-static void server_tcp_drain_accept_backlog(int server_fd, int epoll_fd,
-                              struct epoll_event client_event,
-                              cnx_manager_t *cm, struct sockaddr_in client_addr,
-                              socklen_t *client_addr_len) {
-  int cfd;
+static void server_tcp_drain_accept_backlog(s_state_t *s) {
+  int fd;
   for (;;) {
     // deque backlog as client socket
-    cfd = accept4(server_fd, (struct sockaddr *)&client_addr, client_addr_len,
-                  SOCK_NONBLOCK);
-    if (cfd < 0) {
+    fd = accept4(s->server_md.fd, (struct sockaddr *)&s->client_md.client,
+                 &s->client_md.client_len, SOCK_NONBLOCK);
+    if (fd < 0) {
       // drained
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
         break;
@@ -111,12 +105,12 @@ static void server_tcp_drain_accept_backlog(int server_fd, int epoll_fd,
         break;
       }
     }
-    cm_track_cnx(cm, cfd);
-    client_event.events = EPOLLIN | EPOLLRDHUP | EPOLLET;
-    client_event.data.fd = cfd;
+    cm_track_cnx(s->cm, fd);
+    s->client_md.events.events = EPOLLIN | EPOLLRDHUP | EPOLLET;
+    s->client_md.events.data.ptr = cm_get_cnx(s->cm, fd);
 
-    // TODO: add tracked connection object to epoll data
-    if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, cfd, &client_event) == -1) {
+    if (epoll_ctl(s->epoll_md.fd, EPOLL_CTL_ADD, fd, &s->client_md.events) ==
+        -1) {
       perror("could not add client fd to epoll instance list");
     }
   }
@@ -166,7 +160,6 @@ static void server_start_listen_addr_port(s_state_t *s, char *ip, char *port) {
   s->server_md.server.sin_addr = s->network_md.server_sin_addr_ip;
 }
 
-
 static void server_socket_create(s_state_t *s) {
   if ((s->server_md.fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1) {
     perror("could not create server socket");
@@ -208,7 +201,6 @@ static void server_socket_listen(s_state_t *s) {
   printf("Listening on %s:%s\n", s->network_md.log_str_ip,
          s->network_md.log_str_port);
 }
-
 
 static void server_epoll_create(s_state_t *s) {
   if ((s->epoll_md.fd = epoll_create1(0)) == -1) {
@@ -266,7 +258,8 @@ static s_state_t *server_state_initialization(char *ip, char *port) {
 }
 
 void server_event_loop(s_state_t *s) {
-  for (;;) {
+  cnx_t *cnx;
+  for (cnx = 0;;) {
     if ((s->epoll_md.n_ready_events = epoll_wait(
              s->epoll_md.fd, s->epoll_md.events, MAX_EVENTS, -1)) == -1) {
       perror("could not wait for server fd on epoll");
@@ -280,35 +273,35 @@ void server_event_loop(s_state_t *s) {
     }
     for (int n = 0; n < s->epoll_md.n_ready_events; n++) {
       if (s->epoll_md.events[n].events & EPOLLRDHUP) {
-        close(s->epoll_md.events[n].data.fd);
+        cnx = s->epoll_md.events[n].data.ptr;
+        close(cm_get_cnx_fd(cnx));
         continue;
       }
-      if (s->epoll_md.events[n].data.fd == s->server_md.fd) {
-        server_tcp_drain_accept_backlog(
-            s->server_md.fd, s->epoll_md.fd, s->client_md.events, s->cm,
-            s->client_md.client, &s->client_md.client_len);
+      cnx = s->epoll_md.events[n].data.ptr;
+      if (cm_get_cnx_fd(cnx) == s->server_md.fd) {
+        server_tcp_drain_accept_backlog(s);
       } else {
-        cm_manage_incoming_cnx(s->cm, s->epoll_md.events[n].data.fd,
-                           s->epoll_md.fd);
+        cnx = s->epoll_md.events[n].data.ptr;
+        http_handle_incoming_cnx(cnx);
       }
     }
   }
 }
 
-void server_start_event_loop(char* ip, char* port) {
+void server_start_event_loop(char *ip, char *port) {
   s_state_t *st = server_state_initialization(ip, port);
   if (st == NULL) {
-      fprintf(stderr, "could not create server state");
-      server_hangup(st);
-      exit(-1);
+    fprintf(stderr, "could not create server state");
+    server_hangup(st);
+    exit(-1);
   }
   server_event_loop(st);
 }
 
 void *server_validate_ip_addr(char *ip) {
-    return ip; // or NULL
+  return ip; // or NULL
 }
 
 void *server_validate_port_addr(char *port) {
-    return port; // or NULL
+  return port; // or NULL
 }

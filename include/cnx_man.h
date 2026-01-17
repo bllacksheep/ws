@@ -12,6 +12,7 @@ typedef struct conn_man cnx_manager_t;
 
 cnx_manager_t *cm_allocator(void);
 cnx_t *cm_get_cnx(cnx_manager_t *, int);
+int cm_get_cnx_fd(cnx_t *);
 void cm_track_cnx(cnx_manager_t *, int);
 void cm_remove_cnx(cnx_t *);
 
