@@ -1,7 +1,6 @@
 #include "cnx_man.h"
 #include "cnx_internal.h"
 #include "http.h"
-#include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -79,3 +78,5 @@ void cm_track_cnx(cnx_manager_t *cm, int fd) {
 }
 
 int cm_get_cnx_fd(cnx_t *cx) { return cx->fd; }
+
+cnx_t *cm_get_cnx(cnx_manager_t *cm, int fd) { return cm->cnx[fd]; }
