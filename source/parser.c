@@ -27,7 +27,7 @@ typedef enum {
   VERSION,
   HEADERS,
   BODY,
-  TOKEN_COUNT
+  NUM_SEMANTIC_TOKENS,
 } semantic_type_t;
 
 typedef struct {
@@ -129,8 +129,8 @@ static void validate_method(http_ctx_t *cx, uint8_t *m) {
   }
 }
 
-static void parser_parse_http_semantics(http_ctx_t *ctx, stream_token_t *stream,
-                                        size_t token_count) {
+static void parser_parse_http_semantics(http_ctx_t *ctx, stream_token_t *stream_tokens,
+                                        size_t stream_token_n) {
 
   enum {
     IDLE,
@@ -146,34 +146,35 @@ static void parser_parse_http_semantics(http_ctx_t *ctx, stream_token_t *stream,
   // enum needed to set array size
   enum { MAX_HEADER_BUF = MAX_HEADER_BUF_SIZE };
 
-  int32_t idx = 0;
-  semantic_token_t *semantic_token =
-      (semantic_token_t *)malloc(sizeof(semantic_token_t) * TOKEN_COUNT);
+  // don't allocate here
+  int32_t sem_token_idx = 0;
 
-  memset(semantic_token, 0, sizeof(semantic_token_t) * TOKEN_COUNT);
+  semantic_token_t *semantic_tokens =
+      (semantic_token_t *)malloc(sizeof(semantic_token_t) * NUM_SEMANTIC_TOKENS);
+  memset(semantic_tokens, 0, sizeof(semantic_token_t) * NUM_SEMANTIC_TOKENS);
 
   tls_inc_map();
 
-  for (int32_t i = 0; i < token_count; i++) {
-    stream_token_t current_token = stream[i];
+  for (int i = 0; i < stream_token_n; i++) {
+    stream_token_t *current_token = &stream_tokens[i];
 
     switch (state) {
     case IDLE:
-      if (current_token.type == CHAR) {
-        semantic_token[METHOD].val[idx++] = current_token.val;
+      if (current_token->type == CHAR) {
+        semantic_tokens[METHOD].val[sem_token_idx++] = current_token->val;
         state = METHOD_STATE;
       }
       break;
     case METHOD_STATE:
-      semantic_token[METHOD].type = METHOD;
-      if (current_token.type == CHAR) {
-        semantic_token[METHOD].val[idx++] = current_token.val;
-      } else if (current_token.type == SPACE) {
+      semantic_tokens[METHOD].type = METHOD;
+      if (current_token->type == CHAR) {
+        semantic_tokens[METHOD].val[sem_token_idx++] = current_token->val;
+      } else if (current_token->type == SPACE) {
         state = PATH_STATE;
         // reset val writer
-        idx = 0;
+        sem_token_idx = 0;
 
-        validate_method(ctx, semantic_token[METHOD].val);
+        validate_method(ctx, semantic_tokens[METHOD].val);
 
         if (ctx->request->method == UNKNOWN) {
           // HANDLE EARLY
@@ -181,47 +182,47 @@ static void parser_parse_http_semantics(http_ctx_t *ctx, stream_token_t *stream,
       }
       break;
     case PATH_STATE:
-      semantic_token[PATH].type = PATH;
-      if (current_token.type == SLASH || current_token.type == CHAR) {
-        semantic_token[PATH].val[idx++] = current_token.val;
-      } else if (current_token.type == SPACE) {
+      semantic_tokens[PATH].type = PATH;
+      if (current_token->type == SLASH || current_token->type == CHAR) {
+        semantic_tokens[PATH].val[sem_token_idx++] = current_token->val;
+      } else if (current_token->type == SPACE) {
         state = VERSION_STATE;
-        idx = 0;
-        if (validate_path(semantic_token[PATH].val)) {
-          ctx->request->path = semantic_token[PATH].val;
+        sem_token_idx = 0;
+        if (validate_path(semantic_tokens[PATH].val)) {
+          ctx->request->path = semantic_tokens[PATH].val;
         }
       }
       break;
     case VERSION_STATE:
-      semantic_token[VERSION].type = VERSION;
-      if (current_token.type == CHAR || current_token.type == SLASH ||
-          current_token.type == NUM || current_token.type == DOT) {
-        semantic_token[VERSION].val[idx++] = current_token.val;
+      semantic_tokens[VERSION].type = VERSION;
+      if (current_token->type == CHAR || current_token->type == SLASH ||
+          current_token->type == NUM || current_token->type == DOT) {
+        semantic_tokens[VERSION].val[sem_token_idx++] = current_token->val;
         // ctx->request->version =
         // validate_version(semantic_token[VERSION].val);
-      } else if (current_token.type == CARRIAGE &&
-                 stream[i + 1].type == NEWLINE) {
+      } else if (current_token->type == CARRIAGE &&
+                 stream_tokens[i + 1].type == NEWLINE) {
         state = HEADER_STATE;
-        idx = 0;
+        sem_token_idx = 0;
       }
       break;
     case HEADER_STATE:
-      semantic_token[HEADERS].type = HEADERS;
+      semantic_tokens[HEADERS].type = HEADERS;
 
       // ensure no invalid tokens before COLON
-      if (current_token.type == CHAR || current_token.type == COLON ||
-          current_token.type == SPACE || current_token.type == NUM ||
-          current_token.type == DOT || current_token.type == SLASH ||
-          current_token.type == SPECIAL) {
-        semantic_token[HEADERS].val[idx++] = current_token.val;
-      } else if (current_token.type == CARRIAGE &&
-                 stream[i + 1].type == NEWLINE &&
-                 stream[i + 2].type == CARRIAGE &&
-                 stream[i + 3].type == NEWLINE) {
+      if (current_token->type == CHAR || current_token->type == COLON ||
+          current_token->type == SPACE || current_token->type == NUM ||
+          current_token->type == DOT || current_token->type == SLASH ||
+          current_token->type == SPECIAL) {
+        semantic_tokens[HEADERS].val[sem_token_idx++] = current_token->val;
+      } else if (current_token->type == CARRIAGE &&
+                 stream_tokens[i + 1].type == NEWLINE &&
+                 stream_tokens[i + 2].type == CARRIAGE &&
+                 stream_tokens[i + 3].type == NEWLINE) {
 
         uint8_t key[MAX_HEADER_BUF] = {0};
         uint8_t val[MAX_HEADER_BUF] = {0};
-        uint8_t *headers = semantic_token[HEADERS].val;
+        uint8_t *headers = semantic_tokens[HEADERS].val;
         int32_t j = 0; // overall pos in headers
         int32_t k = 0;
         int32_t v = 0;
@@ -247,6 +248,7 @@ static void parser_parse_http_semantics(http_ctx_t *ctx, stream_token_t *stream,
 
           tls_map_insert(key, strlen(key), val);
 
+          // don't memset here
           memset(key, 0, MAX_HEADER_BUF);
           memset(val, 0, MAX_HEADER_BUF);
           v = k = 0;
@@ -254,21 +256,21 @@ static void parser_parse_http_semantics(http_ctx_t *ctx, stream_token_t *stream,
         // ht_del_hash_table(ht);
         // ctx->request->headers = validate_headers(ht);
         state = BODY_STATE;
-        idx = 0;
-      } else if (current_token.type == CARRIAGE &&
-                 stream[i + 1].type == NEWLINE) {
-        semantic_token[HEADERS].val[idx++] = ' ';
+        sem_token_idx = 0;
+      } else if (current_token->type == CARRIAGE &&
+                 stream_tokens[i + 1].type == NEWLINE) {
+        semantic_tokens[HEADERS].val[sem_token_idx++] = ' ';
       }
       break;
     case BODY_STATE:
       // depends on headers being accessible via hashmap
       // a conn can remain in BODY_STATE during chunked transfer
-      semantic_token[BODY].type = BODY;
-      if (current_token.type == CHAR) {
-        semantic_token[BODY].val[idx++] = current_token.val;
+      semantic_tokens[BODY].type = BODY;
+      if (current_token->type == CHAR) {
+        semantic_tokens[BODY].val[sem_token_idx++] = current_token->val;
       }
-      ctx->request->body->buf = semantic_token[BODY].val;
-      // else if idx == to be read, state = DONE;
+      ctx->request->body->buf = semantic_tokens[BODY].val;
+      // else if sem_token_idx == to be read, state = DONE;
       break;
     case DONE_STATE:
       break;
