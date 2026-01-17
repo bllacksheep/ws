@@ -60,45 +60,45 @@ static void parser_parse_http_byte_stream(stream_token_t *, const uint8_t *,
                                           size_t);
 static void parser_parse_http_semantics(http_ctx_t *, stream_token_t *, size_t);
 
-static void parser_parse_raw_byte_stream(stream_token_t *stream,
-                                         const uint8_t *input, size_t slen) {
+static void parser_parse_raw_byte_stream(stream_token_t *stream_tokens,
+                                         const uint8_t *stream_in, size_t stream_in_n) {
 
-  if (slen > MAX_INCOMING_STREAM_SIZE) {
+  if (stream_in_n > MAX_INCOMING_STREAM_SIZE) {
     LOG("stream too large");
     exit(1);
   }
 
-  for (int32_t i = 0; i < slen; i++) {
-    stream_token_t token;
-    if (isalpha(input[i])) {
-      token.val = input[i];
+  for (int32_t i = 0; i < stream_in_n; i++) {
+    stream_token_t token = {0};
+    if (isalpha(stream_in[i])) {
+      token.val = stream_in[i];
       token.type = CHAR;
-    } else if (isdigit(input[i])) {
-      token.val = input[i];
+    } else if (isdigit(stream_in[i])) {
+      token.val = stream_in[i];
       token.type = NUM;
-    } else if (input[i] == '\r') {
-      token.val = input[i];
+    } else if (stream_in[i] == '\r') {
+      token.val = stream_in[i];
       token.type = CARRIAGE;
-    } else if (input[i] == '\n') {
-      token.val = input[i];
+    } else if (stream_in[i] == '\n') {
+      token.val = stream_in[i];
       token.type = NEWLINE;
-    } else if (isblank(input[i])) {
-      token.val = input[i];
+    } else if (isblank(stream_in[i])) {
+      token.val = stream_in[i];
       token.type = SPACE;
-    } else if (input[i] == '/') {
-      token.val = input[i];
+    } else if (stream_in[i] == '/') {
+      token.val = stream_in[i];
       token.type = SLASH;
-    } else if (input[i] == '.') {
-      token.val = input[i];
+    } else if (stream_in[i] == '.') {
+      token.val = stream_in[i];
       token.type = DOT;
-    } else if (input[i] == ':') {
-      token.val = input[i];
+    } else if (stream_in[i] == ':') {
+      token.val = stream_in[i];
       token.type = COLON;
-    } else if (!isalpha(input[i])) {
-      token.val = input[i];
+    } else if (!isalpha(stream_in[i])) {
+      token.val = stream_in[i];
       token.type = SPECIAL;
     }
-    stream[i] = token;
+    stream_tokens[i] = token;
   }
 }
 
