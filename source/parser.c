@@ -1,4 +1,5 @@
 #include "parser.h"
+#include "log.h"
 #include "hash.h"
 #include "http.h"
 #include "http_internal.h"
@@ -63,7 +64,7 @@ static void parser_parse_raw_byte_stream(stream_token_t *stream,
                                          const uint8_t *input, size_t slen) {
 
   if (slen > MAX_INCOMING_STREAM_SIZE) {
-    printf("stream too large!\n");
+    LOG("stream too large");
     exit(1);
   }
 
@@ -278,12 +279,10 @@ static void parser_parse_http_semantics(http_ctx_t *ctx, stream_token_t *stream,
 }
 
 void parser_parse_http_request(http_ctx_t *ctx, const uint8_t *stream_in,
-                               size_t token_n) {
+                               size_t token_count) {
   // don't allocate here
   // max req size is known...
   // can't take size of incomplete type
-  //
-  size_t token_count = sizeof(stream_token_t) * token_n;
   stream_token_t *token_stream = calloc(token_count, sizeof(stream_token_t));
 
   if (token_stream == NULL) {
