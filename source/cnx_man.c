@@ -1,3 +1,4 @@
+#include "log.h"
 #include "cnx_man.h"
 #include "cnx_internal.h"
 #include "http.h"
@@ -33,6 +34,7 @@ static void cm_add_cnx(cnx_manager_t *cm) {
     cm->cnx[i]->stream_outbuf =
         (uint8_t *)calloc(CNX_MANAGER_BYTE_STREAM_SIZEIN, sizeof(uint8_t));
     if (cm->cnx[i]->stream_inbuf == NULL) {
+      LOG("could not create connection stream inbuf");
       perror("could not create connection stream inbuf");
       exit(-1);
     }
