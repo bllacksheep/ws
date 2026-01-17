@@ -1,6 +1,7 @@
+LOG ?= 0
 CC = gcc
-CFLAGS = -Iinclude -g
-LDFLAGS = -lcriterion
+CFLAGS += -Iinclude -g -DLOG_ENABLED=$(LOG)
+LDFLAGS += -lcriterion
 
 SRC = source
 OBJ = build/server.o build/cnx_man.o build/http.o build/ip.o build/parser.o build/hash_table.o build/init.o
