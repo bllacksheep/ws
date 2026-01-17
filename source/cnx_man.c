@@ -31,7 +31,7 @@ static void cm_add_cnx(cnx_manager_t *cm) {
     cm->cnx[i] = cnx;
     cm->cnx[i]->reuse = KEEPALIVE;
     cm->cnx[i]->state = UNUSED;
-    cm->cnx[i]->stream_outbuf =
+    cm->cnx[i]->stream_inbuf =
         (uint8_t *)calloc(CNX_MANAGER_BYTE_STREAM_SIZEIN, sizeof(uint8_t));
     if (cm->cnx[i]->stream_inbuf == NULL) {
       LOG("could not create connection stream inbuf");
