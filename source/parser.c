@@ -143,13 +143,14 @@ static void parser_parse_http_semantics(http_ctx_t *ctx, stream_token_t *stream_
     ERROR_STATE,
   } state = IDLE;
 
-  // don't allocate here
   int32_t sem_token_idx = 0;
 
+  // don't allocate here
   semantic_token_t *semantic_tokens =
       (semantic_token_t *)malloc(sizeof(semantic_token_t) * NUM_SEMANTIC_TOKENS);
   memset(semantic_tokens, 0, sizeof(semantic_token_t) * NUM_SEMANTIC_TOKENS);
 
+  // inc on new req
   tls_inc_map();
 
   for (int i = 0; i < stream_token_n; i++) {
@@ -243,13 +244,8 @@ static void parser_parse_http_semantics(http_ctx_t *ctx, stream_token_t *stream_
             h_pos++;
           }
 
-          // not allocated yet
+          // k,v not allocated yet
           tls_map_insert(tmp_key, strlen(tmp_key), tmp_val);
-
-          // don't memset here
-          //memset(key, 0, MAX_HEADER_BUF);
-          //memset(val, 0, MAX_HEADER_BUF);
-          //v = k = 0;
         }
         // ht_del_hash_table(ht);
         // ctx->request->headers = validate_headers(ht);
