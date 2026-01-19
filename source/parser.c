@@ -62,13 +62,16 @@ static inline uint32_t validate_version(uint8_t *);
 static void parser_parse_http_byte_stream(stream_token_t *, const uint8_t *,
                                           size_t);
 static void parser_parse_http_semantics(http_ctx_t *, stream_token_t *, size_t);
+static void parser_parse_raw_byte_stream(stream_token_t *,
+                                         const uint8_t *, const size_t);
+
 
 static void parser_parse_raw_byte_stream(stream_token_t *stream_tokens,
-                                         const uint8_t *stream_in, size_t stream_in_n) {
+                                         const uint8_t *stream_in, const size_t stream_in_n) {
 
   if (stream_in_n > MAX_INCOMING_STREAM_SIZE) {
     LOG("stream too large");
-    exit(1);
+    exit(-1);
   }
 
   for (int32_t i = 0; i < stream_in_n; i++) {
@@ -105,14 +108,14 @@ static void parser_parse_raw_byte_stream(stream_token_t *stream_tokens,
   }
 }
 
-static inline uint32_t validate_path(uint8_t *http_path, size_t len) {
-  if (memcmp(http_path, HTTP_ENDPOINT, len) == 0) {
-    return 0;
-  }
+
+// restrict path to /chat for now
+static inline uint32_t validate_path(const uint8_t *http_path, const size_t len) {
+  if (memcmp(http_path, HTTP_ENDPOINT, len) == 0) return 0;
   return 1;
 }
 
-static inline http_version_t validate_version(uint8_t *http_version, size_t len) {
+static inline http_version_t validate_version(const uint8_t *http_version, const size_t len) {
   if (http_version == NULL) return HTTP_INVALID;
   if (len == 8 && memcmp(http_version, "HTTP/1.0", len) == 0) return HTTP_10;
   if (len == 8 && memcmp(http_version, "HTTP/1.1", len) == 0) return HTTP_11;
@@ -120,22 +123,11 @@ static inline http_version_t validate_version(uint8_t *http_version, size_t len)
   return HTTP_INVALID;
 }
 
-static inline uint32_t validate_method(http_ctx_t *cx, uint8_t *m) {
-  const char *http_method = (const char *)m;
-
-  const char *http_get_method = "GET";
-  const char *http_post_method = "POST";
-
-  if (strcmp(http_method, http_get_method) == 0) {
-    cx->request->method = GET;
-    return 0;
-  } else if (strcmp(http_method, http_post_method) == 0) {
-    cx->request->method = POST;
-    return 0;
-  } else {
-    cx->request->method = UNKNOWN;
-    return 1;
-  }
+static inline http_method_t validate_method(const uint8_t *m, size_t len) {
+  if (m == NULL) return UNKNOWN;
+  if (len == 3 && memcmp(m, "GET", 3) == 0) return GET;
+  if (len == 4 && memcmp(m, "POST", 4) == 0) return POST;
+  return UNKNOWN;
 }
 
 static void parser_parse_http_semantics(http_ctx_t *ctx, stream_token_t *stream_tokens,
@@ -188,8 +180,12 @@ static void parser_parse_http_semantics(http_ctx_t *ctx, stream_token_t *stream_
         state = PATH_STATE;
         sem_token_idx = 0;
 
-        if (validate_method(ctx, semantic_tokens[METHOD].val) != 0) state = ERROR_STATE;
-
+        http_method_t method = validate_method(ctx, semantic_tokens[METHOD].val);
+        if (method == UNKNOWN) {
+            state = ERROR_STATE;
+            break;
+        }
+        ctx->request->method = method;
       } else {
         state = ERROR_STATE;
         // handle method too large
@@ -202,8 +198,12 @@ static void parser_parse_http_semantics(http_ctx_t *ctx, stream_token_t *stream_
       } else if (current_token->type == SPACE) {
         state = VERSION_STATE;
         sem_token_idx = 0;
-
-        if (validate_path(ctx, semantic_tokens[PATH].val) != 0) state = ERROR_STATE;
+        
+        if (validate_path(ctx, semantic_tokens[PATH].val) != 0) {
+            state = ERROR_STATE;
+            break;
+         }
+        ctx->request->path = semantic_tokens[PATH].val;
       }
       break;
     case VERSION_STATE:
@@ -214,7 +214,12 @@ static void parser_parse_http_semantics(http_ctx_t *ctx, stream_token_t *stream_
       } else if (current_token->type == CARRIAGE &&
                  stream_tokens[i + 1].type == NEWLINE) {
         state = HEADER_STATE;
-        if (validate_version(ctx, semantic_token[VERSION].val) != 0) state = ERROR_STATE;
+        http_version_t version = validate_version(ctx, semantic_token[VERSION].val);
+        if (version == HTTP_INVALID) {
+            state = ERROR_STATE;
+            break;
+        }
+        ctx->request->version = version;
         sem_token_idx = 0;
       }
       break;
