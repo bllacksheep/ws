@@ -5,10 +5,6 @@
 #include <stdint.h>
 #include <sys/types.h>
 
-#define MAX_REQ_SIZE 1024
-#define RESPONSE_BODY_BUF_SIZE 1024
-#define HTTP_ENDPOINT "/chat"
-
 typedef enum httpMethods http_method_t;
 typedef struct httpBody http_body_t;
 typedef struct httpRequest http_request_t;
@@ -21,7 +17,8 @@ typedef enum httpMethods {
   POST,
 } http_method_t;
 
-void http_alloc_buf(cnx_t *);
+void http_destroy(http_ctx_t *);
+http_ctx_t *http_alloc_http_ctx();
 // void http_parse_request(http_ctx_t *, const uint8_t *, uint32_t,
 //                                       const uint8_t *, uint32_t);
 void http_handle_incoming_cnx(cnx_t *);

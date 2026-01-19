@@ -3,15 +3,19 @@
 #include <hash.h>
 #include <stdint.h>
 
+#define MAX_REQ_SIZE 1024
+#define REQUEST_BODY_BUF_SIZE 1024
+#define RESPONSE_BODY_BUF_SIZE 1024
+#define HTTP_ENDPOINT "/chat"
+
 typedef struct httpBody {
   uint8_t *buf;
   const uint32_t length;
 } http_body_t;
 
 typedef struct httpResponse {
-  // needs response headers here
-  const uint8_t *buf;
-  const uint32_t length;
+  tm_item_t *headers[HT_TABLE_SIZE];
+  http_body_t *body;
 } http_response_t;
 
 typedef struct httpRequest {
