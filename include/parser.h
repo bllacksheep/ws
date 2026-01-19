@@ -4,6 +4,7 @@
 #include<stdint.h>
 
 // max size of a header k,v
+#define MAX_HTTP_METHOD_SIZE 4
 #define MAX_HEADER_KEY_BUF_SIZE 256
 #define MAX_HEADER_VAL_BUF_SIZE 256
 #define MAX_SEMANTIC_TOKEN_BUF_SIZE 256

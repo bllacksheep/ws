@@ -111,16 +111,15 @@ unsigned int validate_path(const uint8_t *p) {
 }
 
 static void validate_method(http_ctx_t *cx, uint8_t *m) {
+  const char *http_method = (const char *)m;
 
-  const char *http_request_method = (const char *)m;
+  const char *http_get_method = "GET";
+  const char *http_post_method = "POST";
 
-  const char *http_get = "GET";
-  const char *http_post = "POST";
-
-  if (strcmp(http_request_method, http_get) == 0) {
+  if (strcmp(http_method, http_get_method) == 0) {
     cx->request->method = GET;
     return;
-  } else if (strcmp(http_request_method, http_post) == 0) {
+  } else if (strcmp(http_method, http_post_method) == 0) {
     cx->request->method = POST;
     return;
   } else {
@@ -146,37 +145,46 @@ static void parser_parse_http_semantics(http_ctx_t *ctx, stream_token_t *stream_
   int32_t sem_token_idx = 0;
 
   // don't allocate here
+  // potential for area?
   semantic_token_t *semantic_tokens =
       (semantic_token_t *)malloc(sizeof(semantic_token_t) * NUM_SEMANTIC_TOKENS);
   memset(semantic_tokens, 0, sizeof(semantic_token_t) * NUM_SEMANTIC_TOKENS);
 
-  // inc on new req
+  // inc on new req, deal with overriting for keepalive
   tls_inc_map();
 
   for (int i = 0; i < stream_token_n; i++) {
     stream_token_t *current_token = &stream_tokens[i];
 
     switch (state) {
+    case ERROR_STATE:
+        // handle
+        break;
     case IDLE:
       if (current_token->type == CHAR) {
         semantic_tokens[METHOD].val[sem_token_idx++] = current_token->val;
         state = METHOD_STATE;
+      } else {
+        state = ERROR_STATE;
+        // handle
       }
       break;
     case METHOD_STATE:
       semantic_tokens[METHOD].type = METHOD;
-      if (current_token->type == CHAR) {
+      if (current_token->type == CHAR && sem_token_idx <=MAX_HTTP_METHOD_SIZE ) {
         semantic_tokens[METHOD].val[sem_token_idx++] = current_token->val;
       } else if (current_token->type == SPACE) {
         state = PATH_STATE;
-        // reset val writer
         sem_token_idx = 0;
-
         validate_method(ctx, semantic_tokens[METHOD].val);
 
         if (ctx->request->method == UNKNOWN) {
-          // HANDLE EARLY
+            state = ERROR_STATE;
+            // handle
         }
+      } else {
+        state = ERROR_STATE;
+        // handle method too large
       }
       break;
     case PATH_STATE:
