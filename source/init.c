@@ -74,7 +74,7 @@ typedef struct server_state {
 static void server_hangup(s_state_t *s) {
   close(s->server_md.fd);
   close(s->epoll_md.fd);
-  free(s->cm);
+  cm_destroy(s->cm);
   free(s);
 }
 

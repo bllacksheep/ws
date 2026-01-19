@@ -16,6 +16,7 @@ typedef struct conn_man {
 
 static void cm_add_cnx(cnx_manager_t *);
 
+// adds pre-allocated connections for consumption later in parsing
 static void cm_add_cnx(cnx_manager_t *cm) {
   cm->cnx = (cnx_t **)calloc(CNX_MANAGER_CONN_POOL, sizeof(cnx_t *));
   if (cm->cnx == NULL) {
@@ -44,8 +45,21 @@ static void cm_add_cnx(cnx_manager_t *cm) {
       perror("could not create connection stream outbuf");
       exit(-1);
     }
-    http_alloc_buf(cnx);
+    http_ctx_t *ctx = http_alloc_http_ctx();
+    cm->cnx[i]->http = ctx;
   }
+}
+
+void cm_destroy(cnx_manager_t *cm) {
+  if (cm == NULL) return;
+  if (cm->cnx == NULL) return;
+  for (int i = 0; i < CNX_MANAGER_CONN_POOL; i++) {
+    if (cm->cnx[i] == NULL) continue;
+    http_destroy(cm->cnx[i]->http);
+    free(cm->cnx[i]);
+  }
+  free(cm->cnx);
+  free(cm);
 }
 
 cnx_manager_t *cm_allocator() {
