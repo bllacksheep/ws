@@ -8,6 +8,19 @@
 #define RESPONSE_BODY_BUF_SIZE 1024
 #define HTTP_ENDPOINT "/chat"
 
+typedef enum httpSupportedVersions {
+    HTTP_INVALID,
+    HTTP_10,
+    HTTP_11,
+    HTTP_2,
+} http_version_t;
+
+typedef enum httpMethods {
+  UNKNOWN = 0,
+  GET,
+  POST,
+} http_method_t;
+
 typedef struct httpBody {
   uint8_t *buf;
   const uint32_t length;
@@ -21,7 +34,7 @@ typedef struct httpResponse {
 typedef struct httpRequest {
   http_method_t method;
   uint8_t *path;
-  uint8_t *version;
+  http_version_t version;
   tm_item_t *headers[HT_TABLE_SIZE];
   http_body_t *body;
 } http_request_t;
