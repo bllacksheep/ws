@@ -40,9 +40,9 @@ typedef struct {
   semantic_type_t type;
 } semantic_token_t;
 
-static inline uint32_t validate_path(uint8_t *);
-static inline uint32_t validate_method(uint8_t *);
-static inline uint32_t validate_version(uint8_t *);
+static inline uint32_t validate_path(const uint8_t *, const size_t);
+static inline http_method_t validate_method(const uint8_t *, const size_t);
+static inline http_version_t validate_version(const uint8_t *, const size_t);
 static void parser_parse_http_byte_stream(stream_token_t *, const uint8_t *,
                                           size_t);
 static void parser_parse_http_semantics(http_ctx_t *, stream_token_t *, size_t);
@@ -109,8 +109,8 @@ static inline http_version_t validate_version(const uint8_t *http_version, const
 
 static inline http_method_t validate_method(const uint8_t *m, size_t len) {
   if (m == NULL) return UNKNOWN;
-  if (len == 3 && memcmp(m, "GET", 3) == 0) return GET;
-  if (len == 4 && memcmp(m, "POST", 4) == 0) return POST;
+  if (len == 3 && memcmp(m, "GET", len) == 0) return GET;
+  if (len == 4 && memcmp(m, "POST", len) == 0) return POST;
   return UNKNOWN;
 }
 
@@ -128,7 +128,7 @@ static void parser_parse_http_semantics(http_ctx_t *ctx, stream_token_t *stream_
     ERROR_STATE,
   } state = IDLE;
 
-  int32_t sem_token_idx = 0;
+  size_t sem_token_idx = 0;
 
   // don't allocate here
   // potential for area?
@@ -153,7 +153,7 @@ static void parser_parse_http_semantics(http_ctx_t *ctx, stream_token_t *stream_
         state = METHOD_STATE;
       } else {
         state = ERROR_STATE;
-        // handle
+        break;
       }
       break;
     case METHOD_STATE:
@@ -162,14 +162,14 @@ static void parser_parse_http_semantics(http_ctx_t *ctx, stream_token_t *stream_
         semantic_tokens[METHOD].val[sem_token_idx++] = current_token->val;
       } else if (current_token->type == SPACE) {
         state = PATH_STATE;
-        sem_token_idx = 0;
 
-        http_method_t method = validate_method(ctx, semantic_tokens[METHOD].val);
+        http_method_t method = validate_method(semantic_tokens[METHOD].val, sem_token_idx);
         if (method == UNKNOWN) {
             state = ERROR_STATE;
             break;
         }
         ctx->request->method = method;
+        sem_token_idx = 0;
       } else {
         state = ERROR_STATE;
         // handle method too large
@@ -181,13 +181,13 @@ static void parser_parse_http_semantics(http_ctx_t *ctx, stream_token_t *stream_
         semantic_tokens[PATH].val[sem_token_idx++] = current_token->val;
       } else if (current_token->type == SPACE) {
         state = VERSION_STATE;
-        sem_token_idx = 0;
         
-        if (validate_path(ctx, semantic_tokens[PATH].val) != 0) {
+        if (validate_path(semantic_tokens[PATH].val, sem_token_idx) != 0) {
             state = ERROR_STATE;
             break;
          }
         ctx->request->path = semantic_tokens[PATH].val;
+        sem_token_idx = 0;
       }
       break;
     case VERSION_STATE:
@@ -198,7 +198,7 @@ static void parser_parse_http_semantics(http_ctx_t *ctx, stream_token_t *stream_
       } else if (current_token->type == CARRIAGE &&
                  stream_tokens[i + 1].type == NEWLINE) {
         state = HEADER_STATE;
-        http_version_t version = validate_version(ctx, semantic_token[VERSION].val);
+        http_version_t version = validate_version(semantic_tokens[VERSION].val, sem_token_idx);
         if (version == HTTP_INVALID) {
             state = ERROR_STATE;
             break;
