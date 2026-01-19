@@ -21,10 +21,11 @@ void setup(void) {
   cr_assert(pid != -1, "error: fork");
 
   if (pid == 0) {
-    execl(path, "server", ADDR, PORT, (char *)NULL);
-    // won't run if execl succeeds
-    perror("error: server exec");
-    exit(1);
+    int rc = execl(path, "server", ADDR, PORT, (char *)NULL);
+    if (rc <0) {
+        perror("error: server exec");
+        exit(-1);
+    }
   } else {
     server_pid = pid;
     sleep(1);
@@ -55,9 +56,11 @@ Test(smoke, basic) {
   if (pid == 0) {
     char address[100];
     sprintf(address, "http://%s:%s/chat", ADDR, PORT);
-    execl("/usr/bin/siege", "siege", "-c5", "-r2", address, (char *)NULL);
-    perror("error: siege exec");
-    exit(1);
+    int rc = execl("/usr/bin/siege", "siege", "-c5", "-r2", address, (char *)NULL);
+    if (rc <0) {
+        perror("error: server exec");
+        exit(-1);
+    }
   } else {
     siege_pid = pid;
     sleep(1);
