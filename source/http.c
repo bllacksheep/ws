@@ -68,43 +68,43 @@ static void http_handle_raw_request_stream(http_ctx_t *ctx,
 }
 
 http_ctx_t *http_alloc_http_ctx(void) {
-  http_ctx_t *ctx = calloc(1, sizeof(http_ctx_t));
+  http_ctx_t *ctx = calloc(1, sizeof(*ctx));
   if (ctx == NULL) {
     perror("could not alloc http");
     exit(-1);
   }
 
-  ctx->request = calloc(1, sizeof(http_request_t));
+  ctx->request = calloc(1, sizeof(*ctx->request));
   if (ctx->request == NULL) {
     perror("could not alloc http request");
     exit(-1);
   }
 
-  ctx->response = calloc(1, sizeof(http_response_t));
+  ctx->response = calloc(1, sizeof(*ctx->response));
   if (ctx->response == NULL) {
     perror("could not alloc http response");
     exit(-1);
   }
 
-  ctx->request->body = calloc(1, sizeof(http_body_t));
+  ctx->request->body = calloc(1, sizeof(*ctx->request->body));
   if (ctx->request->body == NULL) {
     perror("could not alloc http request body");
     exit(-1);
   }
 
-  ctx->response->body = calloc(1, sizeof(http_body_t));
+  ctx->response->body = calloc(1, sizeof(*ctx->response->body));
   if (ctx->response->body == NULL) {
     perror("could not alloc http response body");
     exit(-1);
   }
 
-  ctx->request->body->buf = calloc(REQUEST_BODY_BUF_SIZE, sizeof(uint8_t));
+  ctx->request->body->buf = calloc(REQUEST_BODY_BUF_SIZE, sizeof(*ctx->request->body->buf));
   if (ctx->request->body->buf == NULL) {
       perror("could not alloc http request body buf");
     exit(-1);
   }
 
-  ctx->response->body->buf = calloc(RESPONSE_BODY_BUF_SIZE, sizeof(uint8_t));
+  ctx->response->body->buf = calloc(RESPONSE_BODY_BUF_SIZE, sizeof(*ctx->response->body->buf));
   if (ctx->response->body->buf == NULL) {
     perror("could not alloc http response body buf");
     exit(-1);
