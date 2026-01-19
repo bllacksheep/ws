@@ -105,9 +105,8 @@ static void parser_parse_raw_byte_stream(stream_token_t *stream_tokens,
   }
 }
 
-static inline uint32_t validate_path(http_ctx_t *cx, uint8_t *http_path) {
-  if (strcmp((char *)http_path, HTTP_ENDPOINT) == 0) {
-    cx->request->path = http_path;
+static inline uint32_t validate_path(uint8_t *http_path, size_t len) {
+  if (memcmp(http_path, HTTP_ENDPOINT, len) == 0) {
     return 0;
   }
   return 1;
@@ -115,9 +114,9 @@ static inline uint32_t validate_path(http_ctx_t *cx, uint8_t *http_path) {
 
 static inline http_version_t validate_version(uint8_t *http_version, size_t len) {
   if (http_version == NULL) return HTTP_INVALID;
-  if (len == 8 && memcmp(http_version, "HTTP/1.0", 8) == 0) return HTTP_10;
-  if (len == 8 && memcmp(http_version, "HTTP/1.1", 8) == 0) return HTTP_11;
-  if (len == 6 && memcmp(http_version, "HTTP/2", 6) == 0) return HTTP_2;
+  if (len == 8 && memcmp(http_version, "HTTP/1.0", len) == 0) return HTTP_10;
+  if (len == 8 && memcmp(http_version, "HTTP/1.1", len) == 0) return HTTP_11;
+  if (len == 6 && memcmp(http_version, "HTTP/2", len) == 0) return HTTP_2;
   return HTTP_INVALID;
 }
 
