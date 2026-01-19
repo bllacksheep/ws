@@ -56,8 +56,9 @@ typedef struct {
   uint8_t *body;
 } raw_request_t;
 
-static inline void validate_path(http_ctx_t *, uint8_t *);
-static inline void validate_method(http_ctx_t *, uint8_t *);
+static inline uint32_t validate_path(http_ctx_t *, uint8_t *);
+static inline uint32_t validate_method(http_ctx_t *, uint8_t *);
+static inline uint32_t validate_version(http_ctx_t *, uint8_t *);
 static void parser_parse_http_byte_stream(stream_token_t *, const uint8_t *,
                                           size_t);
 static void parser_parse_http_semantics(http_ctx_t *, stream_token_t *, size_t);
@@ -112,7 +113,15 @@ static inline uint32_t validate_path(http_ctx_t *cx, uint8_t *http_path) {
   return 1;
 }
 
-static inline void validate_method(http_ctx_t *cx, uint8_t *m) {
+static inline http_version_t validate_version(uint8_t *http_version, size_t len) {
+  if (http_version == NULL) return HTTP_INVALID;
+  if (len == 8 && memcmp(http_version, "HTTP/1.0", 8) == 0) return HTTP_10;
+  if (len == 8 && memcmp(http_version, "HTTP/1.1", 8) == 0) return HTTP_11;
+  if (len == 6 && memcmp(http_version, "HTTP/2", 6) == 0) return HTTP_2;
+  return HTTP_INVALID;
+}
+
+static inline uint32_t validate_method(http_ctx_t *cx, uint8_t *m) {
   const char *http_method = (const char *)m;
 
   const char *http_get_method = "GET";
@@ -120,13 +129,13 @@ static inline void validate_method(http_ctx_t *cx, uint8_t *m) {
 
   if (strcmp(http_method, http_get_method) == 0) {
     cx->request->method = GET;
-    return;
+    return 0;
   } else if (strcmp(http_method, http_post_method) == 0) {
     cx->request->method = POST;
-    return;
+    return 0;
   } else {
     cx->request->method = UNKNOWN;
-    return;
+    return 1;
   }
 }
 
@@ -161,6 +170,7 @@ static void parser_parse_http_semantics(http_ctx_t *ctx, stream_token_t *stream_
     switch (state) {
     case ERROR_STATE:
         // handle
+        return;
         break;
     case IDLE:
       if (current_token->type == CHAR) {
@@ -178,12 +188,9 @@ static void parser_parse_http_semantics(http_ctx_t *ctx, stream_token_t *stream_
       } else if (current_token->type == SPACE) {
         state = PATH_STATE;
         sem_token_idx = 0;
-        validate_method(ctx, semantic_tokens[METHOD].val);
 
-        if (ctx->request->method == UNKNOWN) {
-            state = ERROR_STATE;
-            // handle
-        }
+        if (validate_method(ctx, semantic_tokens[METHOD].val) != 0) state = ERROR_STATE;
+
       } else {
         state = ERROR_STATE;
         // handle method too large
@@ -205,11 +212,10 @@ static void parser_parse_http_semantics(http_ctx_t *ctx, stream_token_t *stream_
       if (current_token->type == CHAR || current_token->type == SLASH ||
           current_token->type == NUM || current_token->type == DOT) {
         semantic_tokens[VERSION].val[sem_token_idx++] = current_token->val;
-        // ctx->request->version =
-        // validate_version(semantic_token[VERSION].val);
       } else if (current_token->type == CARRIAGE &&
                  stream_tokens[i + 1].type == NEWLINE) {
         state = HEADER_STATE;
+        if (validate_version(ctx, semantic_token[VERSION].val) != 0) state = ERROR_STATE;
         sem_token_idx = 0;
       }
       break;
