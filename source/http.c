@@ -43,23 +43,22 @@ static void http_handle_raw_request_stream(http_ctx_t *ctx,
 
   parser_parse_http_request(ctx, stream_inbuf, stream_inbuf_n);
 
-  // needs functions for validitity here
-  // switch statement here
   // needs response + headers + body
+
   if (ctx->request->method == UNKNOWN) {
-    LOG("error: initialize request line unknown payload");
+    LOG("initialize request line unknown payload");
     stream_outbuf_n = strlen(stream_outbuf);
     stream_outbuf = _400_bad_request;
   }
 
   if (strcmp((char *)ctx->request->path, HTTP_ENDPOINT) != 0) {
-    LOG("error: initialize request line uri expectet /chat");
+    LOG("initialize request line uri expects '/chat'");
     stream_outbuf_n = strlen(stream_outbuf);
     stream_outbuf = _400_bad_request;
   }
 
   if (ctx->request->method != GET) {
-    LOG("error: initialize request line not GET method");
+    LOG("initialize request line not GET method");
     stream_outbuf_n = strlen(stream_outbuf);
     stream_outbuf = _405_method_not_allowed;
   }
