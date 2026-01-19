@@ -56,6 +56,8 @@ typedef struct {
   uint8_t *body;
 } raw_request_t;
 
+static inline void validate_path(http_ctx_t *, uint8_t *);
+static inline void validate_method(http_ctx_t *, uint8_t *);
 static void parser_parse_http_byte_stream(stream_token_t *, const uint8_t *,
                                           size_t);
 static void parser_parse_http_semantics(http_ctx_t *, stream_token_t *, size_t);
@@ -102,15 +104,15 @@ static void parser_parse_raw_byte_stream(stream_token_t *stream_tokens,
   }
 }
 
-unsigned int validate_path(const uint8_t *p) {
-  const char *http_request_path = (const char *)p;
-  if (strcmp((char *)p, HTTP_ENDPOINT) == 0) {
-    return 1;
+static inline uint32_t validate_path(http_ctx_t *cx, uint8_t *http_path) {
+  if (strcmp((char *)http_path, HTTP_ENDPOINT) == 0) {
+    cx->request->path = http_path;
+    return 0;
   }
-  return 0;
+  return 1;
 }
 
-static void validate_method(http_ctx_t *cx, uint8_t *m) {
+static inline void validate_method(http_ctx_t *cx, uint8_t *m) {
   const char *http_method = (const char *)m;
 
   const char *http_get_method = "GET";
@@ -194,9 +196,8 @@ static void parser_parse_http_semantics(http_ctx_t *ctx, stream_token_t *stream_
       } else if (current_token->type == SPACE) {
         state = VERSION_STATE;
         sem_token_idx = 0;
-        if (validate_path(semantic_tokens[PATH].val)) {
-          ctx->request->path = semantic_tokens[PATH].val;
-        }
+
+        if (validate_path(ctx, semantic_tokens[PATH].val) != 0) state = ERROR_STATE;
       }
       break;
     case VERSION_STATE:
