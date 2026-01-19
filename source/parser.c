@@ -40,22 +40,6 @@ typedef struct {
   semantic_type_t type;
 } semantic_token_t;
 
-typedef struct {
-  uint8_t *headers;
-} headers_t;
-
-typedef struct {
-  uint8_t *data;
-} body_t;
-
-typedef struct {
-  uint8_t *method;
-  uint8_t *path;
-  uint8_t *version;
-  tm_item_t *items[HT_TABLE_SIZE];
-  uint8_t *body;
-} raw_request_t;
-
 static inline uint32_t validate_path(uint8_t *);
 static inline uint32_t validate_method(uint8_t *);
 static inline uint32_t validate_version(uint8_t *);
