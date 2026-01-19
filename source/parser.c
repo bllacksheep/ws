@@ -56,9 +56,9 @@ typedef struct {
   uint8_t *body;
 } raw_request_t;
 
-static inline uint32_t validate_path(http_ctx_t *, uint8_t *);
-static inline uint32_t validate_method(http_ctx_t *, uint8_t *);
-static inline uint32_t validate_version(http_ctx_t *, uint8_t *);
+static inline uint32_t validate_path(uint8_t *);
+static inline uint32_t validate_method(uint8_t *);
+static inline uint32_t validate_version(uint8_t *);
 static void parser_parse_http_byte_stream(stream_token_t *, const uint8_t *,
                                           size_t);
 static void parser_parse_http_semantics(http_ctx_t *, stream_token_t *, size_t);
