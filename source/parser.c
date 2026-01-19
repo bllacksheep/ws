@@ -130,11 +130,7 @@ static void parser_parse_http_semantics(http_ctx_t *ctx, stream_token_t *stream_
 
   size_t sem_token_idx = 0;
 
-  // don't allocate here
-  // potential for area?
-  semantic_token_t *semantic_tokens =
-      (semantic_token_t *)malloc(sizeof(semantic_token_t) * NUM_SEMANTIC_TOKENS);
-  memset(semantic_tokens, 0, sizeof(semantic_token_t) * NUM_SEMANTIC_TOKENS);
+  semantic_token_t semantic_tokens[NUM_SEMANTIC_TOKENS] = {0};
 
   // inc on new req, deal with overriting for keepalive
   tls_inc_map();
@@ -172,7 +168,8 @@ static void parser_parse_http_semantics(http_ctx_t *ctx, stream_token_t *stream_
         sem_token_idx = 0;
       } else {
         state = ERROR_STATE;
-        // handle method too large
+        //handle log
+        break;
       }
       break;
     case PATH_STATE:
