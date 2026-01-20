@@ -120,8 +120,7 @@ static void server_tcp_drain_accept_backlog(s_state_t *s) {
 // string used in log messages
 static void server_ipaddr_tostring(s_state_t *s) {
   char buf[20] = {0};
-  iptoa(DEFAULT_LISTEN_ADDR, buf);
-  memcpy(s->network_md.log_str_ip, buf, 4);
+  s->network_md.log_str_ip = strdup(iptoa(DEFAULT_LISTEN_ADDR, buf));
 }
 
 // string used in log messages
