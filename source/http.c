@@ -2,6 +2,7 @@
 #include "log.h"
 #include "cnx_internal.h"
 #include "http_internal.h"
+#include "http_responses.h"
 #include <errno.h>
 #include <parser.h>
 #include <stdio.h>
