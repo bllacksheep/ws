@@ -17,24 +17,6 @@ static void http_handle_raw_request_stream(http_ctx_t *, const uint8_t *,
                                            uint8_t *,
                                            size_t *);
 
-const char *_405_method_not_allowed =
-    "\n\nHTTP/1.1 405 Method Not Allowed\r\n"
-    "Allow: GET\r\n"
-    "Content-Type: text/plain\r\n"
-    "Content-Length: 18\r\n\r\n"
-    "Method Not Allowed\n";
-
-const char *_400_bad_request = "\n\nHTTP/1.1 400 Bad Request\r\n"
-                                  "Content-Type: text/plain\r\n"
-                                  "Content-Length: 13\r\n\r\n"
-                                  "That Ain't It\n";
-
-const char *_200_ok = "HTTP/1.1 200 OK\r\n"
-                         "Server: server/0.0.0 (Ubuntu)\r\n"
-                         "Content-Length: 0\r\n"
-                         "Date: Thu, 06 Nov 2025 21:58:42 GMT\r\n"
-                         "Content-Type: text/plain\r\n"
-                         "Connection: keep-alive\r\n\r\n";
 
 static void http_handle_raw_request_stream(http_ctx_t *ctx,
                                            const uint8_t *stream_inbuf,
@@ -147,35 +129,28 @@ void http_handle_incoming_cnx(cnx_t *cx) {
   // check here if cx is existing conn or new cx
   ssize_t stream_n = recv(cx->fd, cx->stream_inbuf, MAX_REQ_SIZE, 0);
 
-  if (stream_n < 0)
-    return;
-
-  cx->stream_inbuf_n = stream_n;
-
-  if (cx->stream_inbuf_n == 0) {
-
+  if (stream_n <= 0) {
+    LOG("no bytes read for stream_inbuf");
     if (epoll_ctl(cx->ev_loop_fd, EPOLL_CTL_DEL, cx->fd, NULL) == -1) {
-      LOG("coudl not remove fd from interest list");
-      perror("could not remove fd from interest list");
+      LOG("could not remove fd from interest list");
     }
-
     // 0 EOF == tcp CLOSE_WAIT
     // to free or not to free here cm->cnx[cfd];
     close(cx->fd);
+  }
 
-   } else {
+    cx->stream_inbuf_n = stream_n;
+
     http_handle_raw_request_stream(cx->http, cx->stream_inbuf,
                                    cx->stream_inbuf_n,
                                    cx->stream_outbuf,
                                    &cx->stream_outbuf_n);
 
     if (cx->stream_outbuf_n > 0) {
-      cx->stream_outbuf_written_n +=
-          write(cx->fd, cx->stream_outbuf, cx->stream_outbuf_n);
+      cx->stream_outbuf_written_n += write(cx->fd, cx->stream_outbuf, cx->stream_outbuf_n);
       if (cx->stream_outbuf_written_n == -1) {
         LOG("could not write on fd");
-        perror("could not write on fd");
-        return;
+        close(cx->fd);
       }
       if (cx->stream_outbuf_written_n != (ssize_t)cx->stream_outbuf_n) {
         LOG("could not partial write on fd");
@@ -184,6 +159,5 @@ void http_handle_incoming_cnx(cnx_t *cx) {
         return;
         }
       }
-    }
   return;
 }
