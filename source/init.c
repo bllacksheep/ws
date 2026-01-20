@@ -2,7 +2,7 @@
 #include "cnx_man.h"
 #include "hash.h"
 #include "http.h"
-#include "ip.h"
+#include "net.h"
 #include <arpa/inet.h>
 #include <asm-generic/errno.h>
 #include <errno.h>
@@ -120,7 +120,8 @@ static void server_tcp_drain_accept_backlog(s_state_t *s) {
 // string used in log messages
 static void server_ipaddr_tostring(s_state_t *s) {
   char buf[20] = {0};
-  s->network_md.log_str_ip = strdup(iptoa(DEFAULT_LISTEN_ADDR, buf));
+  iptoa(DEFAULT_LISTEN_ADDR, buf);
+  memcpy(s->network_md.log_str_ip, buf, 4);
 }
 
 // string used in log messages

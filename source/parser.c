@@ -279,7 +279,9 @@ void parser_parse_http_request(http_ctx_t *ctx, const uint8_t *stream_in,
   // don't allocate here
   // max req size is known...
   // can't take size of incomplete type
-  stream_token_t *token_stream = calloc(token_count, sizeof(stream_token_t));
+
+  // sizeof(stream_token_t) -> *stream_in
+  stream_token_t *token_stream = calloc(token_count, sizeof(*token_stream));
 
   if (token_stream == NULL) {
     perror("never cross the streams!");

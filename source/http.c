@@ -12,9 +12,9 @@
 #include <sys/epoll.h>
 
 static void http_handle_raw_request_stream(http_ctx_t *, const uint8_t *,
-                                           uint32_t,
-                                           const uint8_t *,
-                                           uint32_t);
+                                           size_t,
+                                           uint8_t *,
+                                           size_t);
 
 const uint8_t *_405_method_not_allowed =
     "\n\nHTTP/1.1 405 Method Not Allowed\r\n"
@@ -37,9 +37,9 @@ const uint8_t *_200_ok = "HTTP/1.1 200 OK\r\n"
 
 static void http_handle_raw_request_stream(http_ctx_t *ctx,
                                            const uint8_t *stream_inbuf,
-                                           uint32_t stream_inbuf_n,
-                                           const uint8_t *stream_outbuf,
-                                           uint32_t stream_outbuf_n) {
+                                           size_t stream_inbuf_n,
+                                           uint8_t *stream_outbuf,
+                                           size_t stream_outbuf_n) {
 
   parser_parse_http_request(ctx, stream_inbuf, stream_inbuf_n);
 
@@ -47,24 +47,24 @@ static void http_handle_raw_request_stream(http_ctx_t *ctx,
 
   if (ctx->request->method == UNKNOWN) {
     LOG("initialize request line unknown payload");
-    stream_outbuf_n = strlen(stream_outbuf);
     stream_outbuf = _400_bad_request;
+    stream_outbuf_n = strlen(stream_outbuf);
   }
 
-  if (strcmp((char *)ctx->request->path, HTTP_ENDPOINT) != 0) {
+  if (memcmp(ctx->request->path, HTTP_ENDPOINT, 5) != 0) {
     LOG("initialize request line uri expects '/chat'");
-    stream_outbuf_n = strlen(stream_outbuf);
     stream_outbuf = _400_bad_request;
+    stream_outbuf_n = strlen(stream_outbuf);
   }
 
   if (ctx->request->method != GET) {
     LOG("initialize request line not GET method");
-    stream_outbuf_n = strlen(stream_outbuf);
     stream_outbuf = _405_method_not_allowed;
+    stream_outbuf_n = strlen(stream_outbuf);
   }
 
+  *stream_outbuf = _200_ok;
   stream_outbuf_n = strlen(stream_outbuf);
-  stream_outbuf = _200_ok;
 }
 
 http_ctx_t *http_alloc_http_ctx(void) {
